@@ -9,14 +9,11 @@ ADRMatrixBased3D::setup()
   {
     std::cout << "Initializing the mesh" << std::endl;
 
-    // Read the mesh from file.
-    GridIn<dim> grid_in;
-    grid_in.attach_triangulation(mesh);
+    GridGenerator::hyper_cube(triangulation, 0.0, 1.0);
+    triangulation.refine_global(3);   
+    set_boundary_ids();
 
-    std::ifstream mesh_file(mesh_file_name);
-    grid_in.read_msh(mesh_file);
-
-    std::cout << "  Number of elements = " << mesh.n_active_cells()
+    std::cout << "  Number of elements = " << triangulation.n_active_cells()
               << std::endl;
   }
 
@@ -26,13 +23,13 @@ ADRMatrixBased3D::setup()
   {
     std::cout << "Initializing the finite element space" << std::endl;
 
-    fe = std::make_unique<FE_SimplexP<dim>>(r);
+    fe = std::make_unique<FE_Q<dim>>(r);
 
     std::cout << "  Degree                     = " << fe->degree << std::endl;
     std::cout << "  DoFs per cell              = " << fe->dofs_per_cell
               << std::endl;
 
-    quadrature = std::make_unique<QGaussSimplex<dim>>(r + 1);
+    quadrature = std::make_unique<QGauss<dim>>(r + 1);
 
     std::cout << "  Quadrature points per cell = " << quadrature->size()
               << std::endl;
@@ -44,7 +41,7 @@ ADRMatrixBased3D::setup()
   {
     std::cout << "Initializing the DoF handler" << std::endl;
 
-    dof_handler.reinit(mesh);
+    dof_handler.reinit(triangulation);
     dof_handler.distribute_dofs(*fe);
 
     std::cout << "  Number of DoFs = " << dof_handler.n_dofs() << std::endl;
@@ -89,6 +86,13 @@ ADRMatrixBased3D::assemble()
                           update_values | update_gradients |
                             update_quadrature_points | update_JxW_values);
 
+  FEFaceValues<dim> fe_face_values(*fe,
+                                 QGauss<dim-1>(r+1),
+                                 update_values | update_quadrature_points |
+                                   update_normal_vectors | update_JxW_values);
+
+  const unsigned int n_qf = fe_face_values.n_quadrature_points;
+
   // Local matrix and vector.
   FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
   Vector<double>     cell_rhs(dofs_per_cell);
@@ -108,10 +112,12 @@ ADRMatrixBased3D::assemble()
 
       for (unsigned int q = 0; q < n_q; ++q)
         {
-          const double mu_loc    = mu(fe_values.quadrature_point(q));
-          const double sigma_loc = sigma(fe_values.quadrature_point(q));
-          const double f_loc     = f(fe_values.quadrature_point(q));
-          const Tensor<1,dim> beta_loc = beta(fe_values.quadrature_point(q));
+           const auto  x_q      = fe_values.quadrature_point(q);
+
+          const double mu_loc    = mu.value(x_q);
+          const double gamma_loc = gamma.value(x_q);
+          const double f_loc     = f.value(x_q);     
+          const Tensor<1,dim> beta_loc = beta.value(x_q);
 
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
@@ -122,22 +128,57 @@ ADRMatrixBased3D::assemble()
                                        fe_values.shape_grad(j, q) * //
                                        fe_values.JxW(q);
 
-                  cell_matrix(i, j) += sigma_loc *                   //
+                  cell_matrix(i, j) += gamma_loc *                   //
                                        fe_values.shape_value(i, q) * //
                                        fe_values.shape_value(j, q) * //
                                        fe_values.JxW(q);
 
-                  cell_matrix(i, j) += beta_loc *                   //
-                                       fe_values.shape_value(i, q) * //
-                                       fe_values.shape_grad(j, q) * //
-                                       fe_values.JxW(q);
+                  cell_matrix(i, j) += -(beta_loc * fe_values.shape_grad(i, q)) *
+                               fe_values.shape_value(j, q) *
+                               fe_values.JxW(q);
                 }
 
               cell_rhs(i) += f_loc *                       //
                              fe_values.shape_value(i, q) * //
                              fe_values.JxW(q);
             }
-        }
+       }
+
+      for (unsigned int face = 0; face < cell->n_faces(); ++face)
+        if (cell->face(face)->at_boundary())
+          {
+            const auto bid = cell->face(face)->boundary_id();
+
+            if (neumann_ids.count(bid))
+              {
+                fe_face_values.reinit(cell, face);
+
+                for (unsigned int q = 0; q < n_qf; ++q)
+                  {
+                    const auto xq = fe_face_values.quadrature_point(q);
+                    const auto n  = fe_face_values.normal_vector(q);
+                    const double mu_loc = mu.value(xq);
+                    const double h_loc  = neumann_bc.value(xq);
+                    const auto beta_loc = beta.value(xq);
+                    const double beta_n = beta_loc * n;   
+
+                    for (unsigned int i = 0; i < dofs_per_cell; ++i)
+                      {
+                
+                        cell_rhs(i) += mu_loc* h_loc *
+                                      fe_face_values.shape_value(i, q) *
+                                      fe_face_values.JxW(q);
+
+                        for (unsigned int j = 0; j < dofs_per_cell; ++j)
+                          cell_matrix(i, j) += beta_n *
+                                              fe_face_values.shape_value(i, q) *
+                                              fe_face_values.shape_value(j, q) *
+                                              fe_face_values.JxW(q);
+                      }
+                  }
+              }
+          }
+
 
       cell->get_dof_indices(dof_indices);
 
@@ -148,15 +189,12 @@ ADRMatrixBased3D::assemble()
   // Dirichlet boundary conditions.
   {
     std::map<types::global_dof_index, double> boundary_values;
-    Functions::ZeroFunction<dim>              bc_function;
 
-    std::map<types::boundary_id, const Function<dim> *> boundary_functions;
-    for (unsigned int i = 0; i < 6; ++i)
-      boundary_functions[i] = &bc_function;
-
+    for (const auto bid : dirichlet_ids)
     VectorTools::interpolate_boundary_values(dof_handler,
-                                             boundary_functions,
-                                             boundary_values);
+                                           bid,
+                                           dirichlet_bc,
+                                           boundary_values);
 
     MatrixTools::apply_boundary_values(
       boundary_values, system_matrix, solution, system_rhs, true);
@@ -186,36 +224,31 @@ ADRMatrixBased3D::solve()
                                   /* tolerance = */ 1.0e-16,
                                   /* reduce = */ 1.0e-6);
 
-  SolverCG<Vector<double>> solver(solver_control);
-
   std::cout << "  Solving the linear system" << std::endl;
 
-  solver.solve(system_matrix, solution, system_rhs, preconditioner);
-  std::cout << "  " << solver_control.last_step() << " CG iterations"
-            << std::endl;
+  if (use_advection) // oppure un check: beta != 0
+  {
+    SolverGMRES<Vector<double>> solver(solver_control);
+    solver.solve(system_matrix, solution, system_rhs, preconditioner);
+    std::cout << "  " << solver_control.last_step() << " GMRES iterations\n";
+  }
+  else
+  {
+    SolverCG<Vector<double>> solver(solver_control);
+    solver.solve(system_matrix, solution, system_rhs, preconditioner);
+    std::cout << "  " << solver_control.last_step() << " CG iterations\n";
+  }
 }
 
-void
-ADRMatrixBased3D::output() const
+void ADRMatrixBased3D::output() const
 {
-  std::cout << "===============================================" << std::endl;
-
   DataOut<dim> data_out;
-
-  data_out.add_data_vector(dof_handler, solution, "solution");
+  data_out.attach_dof_handler(dof_handler);
+  data_out.add_data_vector(solution, "u");
   data_out.build_patches();
 
-  // Use std::filesystem to construct the output file name based on the
-  // mesh file name.
-  const std::filesystem::path mesh_path(mesh_file_name);
-  const std::string           output_file_name =
-    "output-" + mesh_path.stem().string() + ".vtk";
-  std::ofstream output_file(output_file_name);
-  data_out.write_vtk(output_file);
-
-  std::cout << "Output written to " << output_file_name << std::endl;
-
-  std::cout << "===============================================" << std::endl;
+  std::ofstream out("solution.vtu");
+  data_out.write_vtu(out);
 }
 
 double
@@ -227,7 +260,7 @@ ADRMatrixBased3D::compute_error(const VectorTools::NormType &norm_type,
   FE_SimplexP<dim> fe_linear(1);
   MappingFE        mapping(fe_linear);
 
-  Vector<double> error_per_cell(mesh.n_active_cells());
+  Vector<double> error_per_cell(triangulation.n_active_cells());
   VectorTools::integrate_difference(mapping,
                                     dof_handler,
                                     solution,
@@ -237,7 +270,17 @@ ADRMatrixBased3D::compute_error(const VectorTools::NormType &norm_type,
                                     norm_type);
 
   const double error =
-    VectorTools::compute_global_error(mesh, error_per_cell, norm_type);
+    VectorTools::compute_global_error(triangulation, error_per_cell, norm_type);
 
   return error;
 }
+
+void ADRMatrixBased3D::set_boundary_ids()
+  {
+  for (const auto &cell : triangulation.active_cell_iterators())
+    for (unsigned int f = 0; f < dealii::GeometryInfo<dim>::faces_per_cell; ++f)
+      if (cell->face(f)->at_boundary())
+        {
+           cell->face(f)->set_boundary_id(1);
+        }
+  }
