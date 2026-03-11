@@ -6,7 +6,7 @@
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/lac/la_parallel_vector.h>
 
-#include "../matrix-based/ProblemData.hpp"
+#include "../ProblemData.hpp"
 
 
 namespace Project {

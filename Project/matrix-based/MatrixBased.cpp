@@ -398,7 +398,7 @@ namespace MatrixBased {
     Utilities::System::get_memory_stats(stats);
 
     // Eval memory and min, max, sum e avg usage for all processes
-    const double local_mem_gb = stats.VmRSS / (1024.0 * 1024.0 * 1024.0);
+    const double local_mem_gb = stats.VmRSS / (1024.0 * 1024.0);
     Utilities::MPI::MinMaxAvg mem_mpi = Utilities::MPI::min_max_avg(local_mem_gb, mpi_communicator);
 
     pcout << "\tMemory (RSS) [GB] -> "

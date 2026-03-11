@@ -33,7 +33,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "ProblemData.hpp"
+#include "../ProblemData.hpp"
  
 namespace MatrixBased {
   using namespace dealii;

@@ -291,8 +291,7 @@ namespace Project {
       QGauss<dim>(fe.degree+1),
       VectorTools::L2_norm
     );
-    const double local_L2_error = VectorTools::compute_global_error(triangulation, difference_per_cell, VectorTools::L2_norm);
-    const double global_L2_error = std::sqrt(Utilities::MPI::sum(local_L2_error * local_L2_error, mpi_communicator));
+    const double L2_error = VectorTools::compute_global_error(triangulation, difference_per_cell, VectorTools::L2_norm);
 
     // Fill difference_per_cell and compute H1 seminorm error
     VectorTools::integrate_difference(
@@ -302,8 +301,7 @@ namespace Project {
       QGauss<dim>(fe.degree+1),
       VectorTools::H1_seminorm
     );
-    const double local_H1_error = VectorTools::compute_global_error(triangulation, difference_per_cell, VectorTools::H1_seminorm);
-    const double global_H1_error = std::sqrt(Utilities::MPI::sum(local_H1_error * local_H1_error, mpi_communicator));
+    const double H1_error = VectorTools::compute_global_error(triangulation, difference_per_cell, VectorTools::H1_seminorm);
 
     // Define an uncomfortable quadrature in order to find the largest error
     QTrapezoid<1> q_trapez;
@@ -317,8 +315,7 @@ namespace Project {
       q_iterated,
       VectorTools::Linfty_norm
     );
-    const double local_Linfty_error = VectorTools::compute_global_error(triangulation, difference_per_cell, VectorTools::Linfty_norm);
-    const double global_Linfty_error = Utilities::MPI::max(local_Linfty_error, mpi_communicator);
+    const double Linfty_error = VectorTools::compute_global_error(triangulation, difference_per_cell, VectorTools::Linfty_norm);
 
     const unsigned int n_active_cells = triangulation.n_global_active_cells();
     const unsigned int n_dofs = dof_handler.n_dofs();
@@ -326,9 +323,9 @@ namespace Project {
     convergence_table.add_value("cycles", cycle);
     convergence_table.add_value("cells", n_active_cells);
     convergence_table.add_value("dofs", n_dofs);
-    convergence_table.add_value("L2", global_L2_error);
-    convergence_table.add_value("H1", global_H1_error);
-    convergence_table.add_value("Linfty", global_Linfty_error);
+    convergence_table.add_value("L2", L2_error);
+    convergence_table.add_value("H1", H1_error);
+    convergence_table.add_value("Linfty", Linfty_error);
   }
  
 
@@ -379,7 +376,7 @@ namespace Project {
     Utilities::System::get_memory_stats(stats);
 
     // Eval memory and min, max, sum e avg usage for all processes
-    const double local_mem_gb = stats.VmRSS / (1024.0 * 1024.0 * 1024.0);
+    const double local_mem_gb = stats.VmRSS / (1024.0 * 1024.0);
     Utilities::MPI::MinMaxAvg mem_mpi = Utilities::MPI::min_max_avg(local_mem_gb, mpi_communicator);
 
     pcout << "\tMemory (RSS) [GB] -> "
