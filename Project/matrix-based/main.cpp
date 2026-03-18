@@ -1,13 +1,15 @@
 #include "MatrixBased.hpp"
 
 int main(int argc, char *argv[]) {
+  constexpr unsigned int dim = 3;
+  constexpr unsigned int fe_degree = 2;
+
   try {
     using namespace MatrixBased;
     Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv);
-    SolverClass solver(2);
+    SolverClass<dim, fe_degree> solver;
     solver.run();
-  }
-  catch (std::exception &exc) {
+  } catch (std::exception &exc) {
     std::cerr << std::endl
               << std::endl
               << "----------------------------------------------------"
@@ -19,8 +21,7 @@ int main(int argc, char *argv[]) {
               << std::endl;
 
     return 1;
-  }
-  catch (...) {
+  } catch (...) {
     std::cerr << std::endl
               << std::endl
               << "----------------------------------------------------"
@@ -31,6 +32,6 @@ int main(int argc, char *argv[]) {
               << std::endl;
     return 1;
   }
- 
+
   return 0;
 }
