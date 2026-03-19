@@ -63,9 +63,8 @@ void SolverClass<dim, degree>::setup_system() {
 
   // Dirichlet map
   std::map<types::boundary_id, const Function<dim> *> dirichlet_map;
-  dirichlet_map[2] = &exact_solution;
-  dirichlet_map[4] = &exact_solution;
-  dirichlet_map[5] = &exact_solution;
+  dirichlet_map[2] = &dirichlet_function_walls;
+  dirichlet_map[4] = &dirichlet_function_inlet;
 
   VectorTools::interpolate_boundary_values(mapping, dof_handler, dirichlet_map,
                                            constraints);
@@ -471,7 +470,7 @@ void SolverClass<dim, degree>::run() {
     solve();
 
     output_results(cycle);
-    estimate_error(cycle);
+    // estimate_error(cycle);
 
     computing_timer.print_summary();
     computing_timer.reset();
@@ -482,6 +481,7 @@ void SolverClass<dim, degree>::run() {
   print_tables();
 }
 
+// add others explicit instantiations if needed...
 template class SolverClass<3, 1>;
 template class SolverClass<3, 2>;
 template class SolverClass<3, 3>;

@@ -31,11 +31,12 @@
 #include <fstream>
 #include <iostream>
 
-#include "../ProblemData.hpp"
+#include "../test/test1.hpp"
 
 namespace MatrixBased {
 using namespace dealii;
-using namespace ProblemData;
+
+using namespace test1;
 
 template <unsigned int dim, unsigned int degree> class SolverClass {
 public:
@@ -103,10 +104,13 @@ private:
   DiffusionCoefficient<dim> mu_function;
   AdvectionCoefficient<dim> b_function;
   ReactionCoefficient<dim> sigma_function;
+
   RightHandSide<dim> rhs_function;
+
   DirichletBoundaryInlet<dim> dirichlet_function_inlet;
   DirichletBoundaryWalls<dim> dirichlet_function_walls;
   NeumannBoundaryValues<dim> neumann_function;
+
   ExactSolution<dim> exact_solution;
 };
 
