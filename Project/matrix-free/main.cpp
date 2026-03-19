@@ -1,13 +1,15 @@
 #include "MatrixFree.hpp"
 
 int main(int argc, char *argv[]) {
+  static constexpr unsigned int dim = 3;
+  static constexpr unsigned int fe_degree = 2;
+
   try {
-    using namespace Project;
+    using namespace MtxFree;
     Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv);
-    SolverClass solver;
+    SolverClass<dim, fe_degree> solver;
     solver.run();
-  }
-  catch (std::exception &exc) {
+  } catch (std::exception &exc) {
     std::cerr << std::endl
               << std::endl
               << "----------------------------------------------------"
@@ -19,8 +21,7 @@ int main(int argc, char *argv[]) {
               << std::endl;
 
     return 1;
-  }
-  catch (...) {
+  } catch (...) {
     std::cerr << std::endl
               << std::endl
               << "----------------------------------------------------"
@@ -31,6 +32,6 @@ int main(int argc, char *argv[]) {
               << std::endl;
     return 1;
   }
- 
+
   return 0;
 }
