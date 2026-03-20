@@ -369,19 +369,19 @@ void SolverClass<dim, degree>::estimate_error(const unsigned int cycle) {
   const double H1_error = VectorTools::compute_global_error(
       triangulation, difference_per_cell, VectorTools::H1_seminorm);
 
-  // Use an oversampled iterated quadrature to approximate the L^inf norm
-  QTrapezoid<1> q_trapez;
-  QIterated<dim> q_iterated(
-      q_trapez,
-      fe.degree * 2 +
-          1); // Repeat the 1D rule this many times in each spatial direction
+  // // Use an oversampled iterated quadrature to approximate the L^inf norm
+  // QTrapezoid<1> q_trapez;
+  // QIterated<dim> q_iterated(
+  //     q_trapez,
+  //     fe.degree * 2 +
+  //         1); // Repeat the 1D rule this many times in each spatial direction
 
-  // Fill difference_per_cell and compute L^infty error
-  VectorTools::integrate_difference(dof_handler, locally_relevant_solution,
-                                    exact_solution, difference_per_cell,
-                                    q_iterated, VectorTools::Linfty_norm);
-  const double Linfty_error = VectorTools::compute_global_error(
-      triangulation, difference_per_cell, VectorTools::Linfty_norm);
+  // // Fill difference_per_cell and compute L^infty error
+  // VectorTools::integrate_difference(dof_handler, locally_relevant_solution,
+  //                                   exact_solution, difference_per_cell,
+  //                                   q_iterated, VectorTools::Linfty_norm);
+  // const double Linfty_error = VectorTools::compute_global_error(
+  //     triangulation, difference_per_cell, VectorTools::Linfty_norm);
 
   const unsigned int n_active_cells = triangulation.n_global_active_cells();
   const unsigned int n_dofs = dof_handler.n_dofs();
@@ -391,7 +391,7 @@ void SolverClass<dim, degree>::estimate_error(const unsigned int cycle) {
   convergence_table.add_value("dofs", n_dofs);
   convergence_table.add_value("L2", L2_error);
   convergence_table.add_value("H1", H1_error);
-  convergence_table.add_value("Linfty", Linfty_error);
+  // convergence_table.add_value("Linfty", Linfty_error);
 }
 
 /// Formats and prints the convergence table (rates and errors) to standard
@@ -400,17 +400,17 @@ template <unsigned int dim, unsigned int degree>
 void SolverClass<dim, degree>::print_tables() {
   convergence_table.set_precision("L2", 3);
   convergence_table.set_precision("H1", 3);
-  convergence_table.set_precision("Linfty", 3);
+  // convergence_table.set_precision("Linfty", 3);
 
   convergence_table.set_scientific("L2", true);
   convergence_table.set_scientific("H1", true);
-  convergence_table.set_scientific("Linfty", true);
+  // convergence_table.set_scientific("Linfty", true);
 
   convergence_table.set_tex_caption("cells", "\\# cells");
   convergence_table.set_tex_caption("dofs", "\\# dofs");
   convergence_table.set_tex_caption("L2", "$L^2$-error");
   convergence_table.set_tex_caption("H1", "$H^1$-error");
-  convergence_table.set_tex_caption("Linfty", "$L^\\infty$-error");
+  // convergence_table.set_tex_caption("Linfty", "$L^\\infty$-error");
 
   convergence_table.set_tex_format("cells", "r");
   convergence_table.set_tex_format("dofs", "r");
@@ -435,8 +435,9 @@ void SolverClass<dim, degree>::print_tables() {
     convergence_table.evaluate_convergence_rates(
         "H1", ConvergenceTable::reduction_rate_log2);
 
+    // print table
     std::cout << std::endl;
-    std::cout << "Convergence Table:" << std::endl;
+    std::cout << "Convergence analysis:" << std::endl;
     convergence_table.write_text(std::cout);
     std::cout << std::endl;
   }
