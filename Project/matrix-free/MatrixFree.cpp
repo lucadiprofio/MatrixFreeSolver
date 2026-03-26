@@ -27,12 +27,13 @@ void SolverClass<dim, degree>::init_mesh() {
 
   // Remap all wall faces to a single ID for convenience:
   for (const auto &cell : triangulation.active_cell_iterators()) {
-    for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
-      if (cell->face(f)->at_boundary()) {
-        const unsigned int id = cell->face(f)->boundary_id();
-        if (id != boundary_id_inlet && id != boundary_id_outlet)
-          cell->face(f)->set_boundary_id(boundary_id_walls);
-      }
+    if (cell->is_locally_owned())
+      for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
+        if (cell->face(f)->at_boundary()) {
+          const unsigned int id = cell->face(f)->boundary_id();
+          if (id != boundary_id_inlet && id != boundary_id_outlet)
+            cell->face(f)->set_boundary_id(boundary_id_walls);
+        }
   }
 }
 
@@ -80,9 +81,16 @@ void SolverClass<dim, degree>::setup_system() {
   system_matrix.initialize(system_mf_storage);
 
   system_matrix.setup_coefficients(mu_function, b_function, sigma_function);
-  system_matrix.initialize_dof_vector(locally_relevant_solution);
 
-  system_rhs.reinit(locally_owned_dofs, mpi_communicator);
+  // Must use initialize_dof_vector so that locally_relevant_solution gets the
+  // MatrixFree-internal partitioner (owned + the exact ghost DOFs required for
+  // cell-based read operations). Using a custom reinit with
+  // locally_relevant_dofs gives a *different* partitioner and causes a segfault
+  // in parallel because read_dof_values_plain() uses MatrixFree's cached ghost
+  // offsets to index into the vector's memory — those offsets are wrong if the
+  // partitioner doesn't match.
+  system_matrix.initialize_dof_vector(locally_relevant_solution);
+  system_matrix.initialize_dof_vector(system_rhs);
 }
 
 /// Sets up the geometric multigrid hierarchy: distributes multigrid DOFs,
@@ -238,8 +246,12 @@ void SolverClass<dim, degree>::solve() {
   TimerOutput::Scope t(computing_timer, "Solve");
 
   SolverControl solver_control(1000, 1e-12 + 1e-8 * system_rhs.l2_norm());
-  MatrixFreeActiveVector distributed_solution(locally_owned_dofs,
-                                              mpi_communicator);
+  // distributed_solution must use the MatrixFree partitioner: both the GMG
+  // preconditioner (vmult) and GMRES matrix-vector products require ghost
+  // entries compatible with the MatrixFree object.
+  MatrixFreeActiveVector distributed_solution;
+  system_matrix.initialize_dof_vector(distributed_solution);
+  distributed_solution = 0.;
   constraints.distribute(distributed_solution);
 
   computing_timer.enter_subsection("Solve: Preconditioner setup");
@@ -316,14 +328,12 @@ void SolverClass<dim, degree>::solve() {
                  preconditioner);
   }
 
+  // this call sets the constrained DOFs to their prescribed Dirichlet values,
+  // giving u = u_0 + u_D.
+  constraints.distribute(distributed_solution);
   locally_relevant_solution = distributed_solution;
-
-  MatrixFreeActiveVector ug;
-  ug.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
-  constraints.distribute(ug);
-
-  locally_relevant_solution += ug;
-  locally_relevant_solution.update_ghost_values(); // synchronization
+  locally_relevant_solution
+      .update_ghost_values(); // sync ghost entries across MPI ranks
 
   pcout << "\tNumber of GMRES iterations: " << solver_control.last_step()
         << std::endl;
