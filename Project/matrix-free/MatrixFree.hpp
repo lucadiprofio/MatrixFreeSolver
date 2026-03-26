@@ -92,7 +92,6 @@ private:
   AffineConstraints<double> constraints;
 
   MatrixFreeActiveMatrix system_matrix;
-  MatrixFreeActiveVector distributed_solution;
   MatrixFreeActiveVector locally_relevant_solution;
   MatrixFreeActiveVector system_rhs;
 

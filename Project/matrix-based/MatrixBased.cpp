@@ -27,13 +27,12 @@ void SolverClass<dim, degree>::init_mesh() {
 
   // Remap all wall faces to a single ID for convenience:
   for (const auto &cell : triangulation.active_cell_iterators()) {
-    if (cell->is_locally_owned())
-      for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
-        if (cell->face(f)->at_boundary()) {
-          const unsigned int id = cell->face(f)->boundary_id();
-          if (id != boundary_id_inlet && id != boundary_id_outlet)
-            cell->face(f)->set_boundary_id(boundary_id_walls);
-        }
+    for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
+      if (cell->face(f)->at_boundary()) {
+        const unsigned int id = cell->face(f)->boundary_id();
+        if (id != boundary_id_inlet && id != boundary_id_outlet)
+          cell->face(f)->set_boundary_id(boundary_id_walls);
+      }
   }
 }
 

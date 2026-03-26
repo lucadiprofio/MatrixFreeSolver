@@ -27,13 +27,12 @@ void SolverClass<dim, degree>::init_mesh() {
 
   // Remap all wall faces to a single ID for convenience:
   for (const auto &cell : triangulation.active_cell_iterators()) {
-    if (cell->is_locally_owned())
-      for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
-        if (cell->face(f)->at_boundary()) {
-          const unsigned int id = cell->face(f)->boundary_id();
-          if (id != boundary_id_inlet && id != boundary_id_outlet)
-            cell->face(f)->set_boundary_id(boundary_id_walls);
-        }
+    for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
+      if (cell->face(f)->at_boundary()) {
+        const unsigned int id = cell->face(f)->boundary_id();
+        if (id != boundary_id_inlet && id != boundary_id_outlet)
+          cell->face(f)->set_boundary_id(boundary_id_walls);
+      }
   }
 }
 
@@ -52,12 +51,11 @@ void SolverClass<dim, degree>::setup_system() {
   DoFTools::extract_locally_relevant_dofs(dof_handler, locally_relevant_dofs);
 
   constraints.clear();
-  // constraints.reinit(locally_owned_dofs, locally_relevant_dofs); // TODO:
-  // update when deal.II supports this overload
+  // constraints.reinit(locally_owned_dofs, locally_relevant_dofs); // todo
   constraints.reinit(locally_relevant_dofs);
   DoFTools::make_hanging_node_constraints(dof_handler, constraints);
 
-  // Dirichlet map
+  // Dirichlet boundary condition handling via AffineConstraints
   std::map<types::boundary_id, const Function<dim> *> dirichlet_map;
   dirichlet_map[2] = &dirichlet_function_walls;
   dirichlet_map[4] = &dirichlet_function_inlet;
@@ -66,6 +64,7 @@ void SolverClass<dim, degree>::setup_system() {
                                            constraints);
   constraints.close();
 
+  // init MatrixFree
   typename MatrixFree<dim, double>::AdditionalData additional_data;
   additional_data.tasks_parallel_scheme =
       MatrixFree<dim, double>::AdditionalData::
@@ -73,7 +72,6 @@ void SolverClass<dim, degree>::setup_system() {
   additional_data.mapping_update_flags =
       (update_values | update_gradients | update_JxW_values |
        update_quadrature_points); // TODO: check whether fewer update flags
-                                  // suffice
 
   std::shared_ptr<MatrixFree<dim, double>> system_mf_storage(
       new MatrixFree<dim, double>());
@@ -83,10 +81,8 @@ void SolverClass<dim, degree>::setup_system() {
 
   system_matrix.setup_coefficients(mu_function, b_function, sigma_function);
   system_matrix.initialize_dof_vector(locally_relevant_solution);
-  locally_relevant_solution = 0.0;
 
   system_rhs.reinit(locally_owned_dofs, mpi_communicator);
-  distributed_solution.reinit(locally_owned_dofs, mpi_communicator); // solution
 }
 
 /// Sets up the geometric multigrid hierarchy: distributes multigrid DOFs,
@@ -101,7 +97,7 @@ void SolverClass<dim, degree>::setup_multigrid() {
   mg_constrained_dofs.clear();
   mg_constrained_dofs.initialize(dof_handler);
 
-  // Only Dirichlet
+  // only Dirichlet
   const std::set<types::boundary_id> boundary_ids = {2, 4};
   mg_constrained_dofs.make_zero_boundary_constraints(dof_handler, boundary_ids);
 
@@ -148,11 +144,11 @@ template <unsigned int dim, unsigned int degree>
 void SolverClass<dim, degree>::assemble_rhs() {
   TimerOutput::Scope timing(computing_timer, "Assemble right-hand side");
 
-  distributed_solution = 0.0;
-  constraints.distribute(distributed_solution);
-  distributed_solution.update_ghost_values();
+  locally_relevant_solution = 0.;
+  constraints.distribute(locally_relevant_solution);
+  locally_relevant_solution.update_ghost_values();
 
-  system_rhs = 0;
+  system_rhs = 0.;
   FEEvaluation<dim, degree, degree + 1, 1, double> phi(
       *system_matrix.get_matrix_free());
 
@@ -160,7 +156,8 @@ void SolverClass<dim, degree>::assemble_rhs() {
        cell < system_matrix.get_matrix_free()->n_cell_batches(); ++cell) {
     phi.reinit(cell);
     phi.read_dof_values_plain(
-        distributed_solution); // non-homogeneus Dirichlet conditions
+        locally_relevant_solution); // plain to allow inhomogeneous Dirichlet
+                                    // boundary conditions
 
     phi.evaluate(EvaluationFlags::gradients | EvaluationFlags::values);
 
@@ -200,10 +197,13 @@ void SolverClass<dim, degree>::assemble_rhs() {
                           q);
     }
 
-    phi.integrate(EvaluationFlags::values | EvaluationFlags::gradients);
+    phi.integrate(EvaluationFlags::gradients | EvaluationFlags::values);
     phi.distribute_local_to_global(system_rhs);
   }
 
+  // Neumann boundary condition handling
+  // be awere to put the neumann id into the map in .hpp file!!!
+  // todo: there is a better (not hard-coded) way to do it 4 sure
   if (!neumann_boundary_ids.empty()) {
     FEFaceEvaluation<dim, degree, degree + 1, 1, double> phi_face(
         *system_matrix.get_matrix_free(), true);
@@ -217,13 +217,12 @@ void SolverClass<dim, degree>::assemble_rhs() {
         continue;
 
       phi_face.reinit(face);
-
+      phi_face.evaluate(EvaluationFlags::values);
       for (unsigned int q = 0; q < phi_face.n_q_points; ++q) {
         const auto x_q = phi_face.quadrature_point(q);
 
         phi_face.submit_value(neumann_function.value(x_q), q);
       }
-
       phi_face.integrate(EvaluationFlags::values);
       phi_face.distribute_local_to_global(system_rhs);
     }
@@ -239,6 +238,9 @@ void SolverClass<dim, degree>::solve() {
   TimerOutput::Scope t(computing_timer, "Solve");
 
   SolverControl solver_control(1000, 1e-12 + 1e-8 * system_rhs.l2_norm());
+  MatrixFreeActiveVector distributed_solution(locally_owned_dofs,
+                                              mpi_communicator);
+  constraints.distribute(distributed_solution);
 
   computing_timer.enter_subsection("Solve: Preconditioner setup");
 
@@ -303,21 +305,25 @@ void SolverClass<dim, degree>::solve() {
     preconditioner.vmult(distributed_solution, system_rhs);
   }
 
+  distributed_solution = 0.;
+  constraints.distribute(distributed_solution);
   {
     TimerOutput::Scope timing(computing_timer, "Solve: GMRES");
 
     SolverType::AdditionalData gmres_data(false, 100);
     SolverType solver(solver_control, gmres_data);
-    distributed_solution = 0.;
     solver.solve(system_matrix, distributed_solution, system_rhs,
                  preconditioner);
   }
 
-  MatrixFreeActiveVector ug(locally_owned_dofs, mpi_communicator);
-  constraints.distribute(ug);
-  distributed_solution += ug;
-
   locally_relevant_solution = distributed_solution;
+
+  MatrixFreeActiveVector ug;
+  ug.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+  constraints.distribute(ug);
+
+  locally_relevant_solution += ug;
+  locally_relevant_solution.update_ghost_values(); // synchronization
 
   pcout << "\tNumber of GMRES iterations: " << solver_control.last_step()
         << std::endl;
@@ -497,7 +503,7 @@ void SolverClass<dim, degree>::run() {
     solve();
 
     output_results(cycle);
-    // estimate_error(cycle);
+    estimate_error(cycle);
 
     computing_timer.print_summary();
     computing_timer.reset();
