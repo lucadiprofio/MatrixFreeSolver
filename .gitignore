@@ -33,7 +33,5 @@
 *.out
 *.app
 
-matrix-based/build/
-matrix-based/out/
-matrix-free/build/
-matrix-free/out/
+**/build
+**/out
