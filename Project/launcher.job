@@ -1,0 +1,14 @@
+#!/bin/bash
+#PBS -N matrix-free-PDE
+#PBS -q cpu
+#PBS -l select=1:ncpus=16
+#PBS -l walltime=01:00:00
+#PBS -l mem=32gb
+#PBS -j oe
+
+cd $PBS_O_WORKDIR
+
+echo "Starting job..."
+mpirun ./matrix-based/build/matrix_based > ./matrix-based/out/results.out
+mpirun ./matrix-free/build/matrix_free > ./matrix-free/out/results.out
+echo "Job finished!"
