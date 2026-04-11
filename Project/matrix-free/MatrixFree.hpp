@@ -5,18 +5,25 @@
 #include <deal.II/base/convergence_table.h>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/timer.h>
+
+#include <deal.II/distributed/grid_refinement.h>
+#include <deal.II/distributed/tria.h>
+
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
+
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/mapping_q1.h>
 #include <deal.II/grid/grid_generator.h>
-#include <deal.II/grid/tria.h>
+
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/trilinos_solver.h>
+
 #include <deal.II/matrix_free/evaluation_flags.h>
+
 #include <deal.II/multigrid/mg_coarse.h>
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/multigrid/mg_matrix.h>
@@ -25,7 +32,9 @@
 #include <deal.II/multigrid/mg_transfer.h>
 #include <deal.II/multigrid/mg_transfer_matrix_free.h>
 #include <deal.II/multigrid/multigrid.h>
+
 #include <deal.II/numerics/data_out.h>
+#include <deal.II/numerics/error_estimator.h>
 #include <deal.II/numerics/vector_tools.h>
 
 #include "ADROperator.hpp"
@@ -42,12 +51,11 @@ public:
 
         triangulation(mpi_communicator,
                       Triangulation<dim>::limit_level_difference_at_vertices,
-                      parallel::distributed::Triangulation<
-                          dim>::construct_multigrid_hierarchy),
+                      parallel::distributed::Triangulation<dim>::construct_multigrid_hierarchy),
         mapping(), fe(degree), dof_handler(triangulation),
 
         pcout(std::cout, mpi_rank == 0),
-        computing_timer(mpi_communicator, pcout, TimerOutput::never,
+        computing_timer(mpi_communicator, pcout, TimerOutput::summary,
                         TimerOutput::wall_times),
 
         mu_function(), b_function(), sigma_function(), rhs_function(),
@@ -69,15 +77,14 @@ private:
   void setup_multigrid();
   void assemble_rhs();
   void solve();
+  void refine_grid();
   void output_results(const unsigned int);
   void estimate_error(const unsigned int);
   void print_tables();
   void track_memory() const;
 
-  std::set<types::boundary_id> neumann_boundary_ids{};
-
+  
   MPI_Comm mpi_communicator;
-
   const unsigned int mpi_size;
   const unsigned int mpi_rank;
 
@@ -111,7 +118,11 @@ private:
   DirichletBoundaryWalls<dim> dirichlet_function_walls;
   NeumannBoundaryValues<dim> neumann_function;
   ExactSolution<dim> exact_solution;
+
+  std::set<types::boundary_id> neumann_boundary_ids{};
+
 };
+
 } // namespace MtxFree
 
 #endif
