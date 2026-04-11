@@ -8,14 +8,19 @@
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/timer.h>
 #include <deal.II/base/utilities.h>
+#include <deal.II/base/mpi.h>
+
 #include <deal.II/distributed/grid_refinement.h>
 #include <deal.II/distributed/tria.h>
+
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
+
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_in.h>
+
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/full_matrix.h>
@@ -24,6 +29,7 @@
 #include <deal.II/lac/sparsity_tools.h>
 #include <deal.II/lac/trilinos_precondition.h>
 #include <deal.II/lac/vector.h>
+
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
 #include <deal.II/numerics/vector_tools.h>
@@ -31,12 +37,14 @@
 #include <fstream>
 #include <iostream>
 
+
+#include "../test/manufactured.hpp"
 #include "../test/test1.hpp"
+#include "../test/test2.hpp"
 
 namespace MatrixBased {
 using namespace dealii;
-
-using namespace test1;
+using namespace manufactured;
 
 template <unsigned int dim, unsigned int degree> class SolverClass {
 public:
@@ -49,8 +57,7 @@ public:
         dof_handler(triangulation),
 
         pcout(std::cout, mpi_rank == 0),
-        computing_timer(mpi_communicator, pcout, TimerOutput::never,
-                        TimerOutput::wall_times),
+        computing_timer(mpi_communicator, pcout, TimerOutput::summary, TimerOutput::wall_times),
 
         mu_function(), b_function(), sigma_function(), rhs_function(),
         dirichlet_function_inlet(), dirichlet_function_walls(),
