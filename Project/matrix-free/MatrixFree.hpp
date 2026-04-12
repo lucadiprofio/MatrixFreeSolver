@@ -10,32 +10,14 @@
 #include <deal.II/distributed/tria.h>
 
 #include <deal.II/dofs/dof_handler.h>
-#include <deal.II/dofs/dof_tools.h>
 
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/mapping_q1.h>
-#include <deal.II/grid/grid_generator.h>
 
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_gmres.h>
-#include <deal.II/lac/trilinos_solver.h>
-
-#include <deal.II/matrix_free/evaluation_flags.h>
-
-#include <deal.II/multigrid/mg_coarse.h>
-#include <deal.II/multigrid/mg_constrained_dofs.h>
-#include <deal.II/multigrid/mg_matrix.h>
-#include <deal.II/multigrid/mg_smoother.h>
-#include <deal.II/multigrid/mg_tools.h>
-#include <deal.II/multigrid/mg_transfer.h>
-#include <deal.II/multigrid/mg_transfer_matrix_free.h>
-#include <deal.II/multigrid/multigrid.h>
-
-#include <deal.II/numerics/data_out.h>
-#include <deal.II/numerics/error_estimator.h>
-#include <deal.II/numerics/vector_tools.h>
 
 #include "ADROperator.hpp"
 
