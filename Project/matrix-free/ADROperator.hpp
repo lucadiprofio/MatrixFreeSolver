@@ -90,6 +90,7 @@ VectorizedArray<number> ADR_Operator<dim, fe_degree, number>::compute_tau(const 
     (gamma_val) * (gamma_val);
   
   // return number(1.0) / std::sqrt(tau_inv_sq); SUPG on
+  (void) tau_inv_sq;
   return number(0.0); // SUPG off
 }
 

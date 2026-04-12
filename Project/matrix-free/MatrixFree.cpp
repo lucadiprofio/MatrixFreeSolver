@@ -190,6 +190,7 @@ void SolverClass<dim, degree>::assemble_rhs() {
         (gamma_val) * (gamma_val);
 
       // const auto tau = 1.0 / std::sqrt(tau_inv_sq); // SUPG on
+      (void) tau_inv_sq;
       const auto tau = 0. / std::sqrt(tau_inv_sq); // SUPG off
 
       const auto strong_residual = beta_val * grad_u + gamma_val * u;
