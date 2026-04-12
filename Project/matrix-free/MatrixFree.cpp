@@ -158,8 +158,6 @@ void SolverClass<dim, degree>::assemble_rhs() {
 
       const auto f_val = rhs_function.value(x_q);
 
-      phi.submit_value(-gamma_val * u + f_val, q);
-
       // SUPG parameter
       const auto inv_jac = phi.inverse_jacobian(q);
       VectorizedArray<double> max_inv_jac = 0.0;
@@ -176,11 +174,14 @@ void SolverClass<dim, degree>::assemble_rhs() {
       // const auto tau = 1.0 / std::sqrt(tau_inv_sq); // SUPG on
       const auto tau = 0. / std::sqrt(tau_inv_sq); // SUPG off
 
+      const auto strong_residual = beta_val * grad_u + gamma_val * u;
+
       phi.submit_gradient(
         -mu_val * grad_u
-        + beta_val * u
+        - (tau * strong_residual) * beta_val
         + (tau * f_val) * beta_val, //  SUPG term
       q);
+      phi.submit_value(-strong_residual + f_val, q);
     }
 
     phi.integrate(EvaluationFlags::gradients | EvaluationFlags::values);
