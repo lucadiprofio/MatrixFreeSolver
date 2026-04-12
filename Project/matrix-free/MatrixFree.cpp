@@ -4,6 +4,10 @@
 #include <deal.II/numerics/error_estimator.h>
 #include <deal.II/numerics/vector_tools.h>
 
+#include <deal.II/distributed/grid_refinement.h>
+
+#include <deal.II/lac/precondition.h>
+
 #include <deal.II/matrix_free/evaluation_flags.h>
 
 #include <deal.II/multigrid/mg_coarse.h>

@@ -6,7 +6,6 @@
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/timer.h>
 
-#include <deal.II/distributed/grid_refinement.h>
 #include <deal.II/distributed/tria.h>
 
 #include <deal.II/dofs/dof_handler.h>
@@ -16,7 +15,6 @@
 
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_vector.h>
-#include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_gmres.h>
 
 #include "ADROperator.hpp"
