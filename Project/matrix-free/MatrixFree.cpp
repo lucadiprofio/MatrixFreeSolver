@@ -256,12 +256,20 @@ void SolverClass<dim, degree>::solve() {
   MGLevelObject<typename SmootherType::AdditionalData> smoother_data;
   smoother_data.resize(0, n_levels - 1);
   for (unsigned int level = 0; level < n_levels; ++level) {
-    smoother_data[level].smoothing_range = 20.0; // Chebyshev smoothing range (alpha)
-    smoother_data[level].degree = 2; // Number of Chebyshev iterations per sweep
 
-    // Number of CG iterations used to estimate the largest eigenvalue,
-    // which is needed to set the Chebyshev polynomial coefficients.
-    smoother_data[level].eig_cg_n_iterations = 20;
+    if (level > 0) {
+      smoother_data[level].smoothing_range = 20.0; // Chebyshev smoothing range (alpha)
+      smoother_data[level].degree = 2; // Number of Chebyshev iterations per sweep
+  
+      // Number of CG iterations used to estimate the largest eigenvalue,
+      // which is needed to set the Chebyshev polynomial coefficients.
+      smoother_data[level].eig_cg_n_iterations = 20;
+    }
+    else {
+      smoother_data[0].smoothing_range = 2e-2;
+      smoother_data[0].degree = numbers::invalid_unsigned_int;
+      smoother_data[0].eig_cg_n_iterations = mg_matrices[0].m();
+    }
 
     smoother_data[level].preconditioner = mg_matrices[level].get_matrix_diagonal_inverse();
   }
@@ -271,10 +279,8 @@ void SolverClass<dim, degree>::solve() {
   mg_smoother.initialize(mg_matrices, smoother_data);
 
   // Coarse grid solver
-  SolverControl coarse_solver_control(1000, 1e-12, false, false);
-  SolverType<MatrixFreeLevelVector> coarse_solver(coarse_solver_control);
-  PreconditionIdentity identity;
-  MGCoarseGridIterativeSolver<MatrixFreeLevelVector, SolverType<MatrixFreeLevelVector>, MatrixFreeLevelMatrix, PreconditionIdentity> coarse_grid_solver(coarse_solver, mg_matrices[0], identity);
+  MGCoarseGridApplySmoother<MatrixFreeLevelVector> mg_coarse;
+  mg_coarse.initialize(mg_smoother);
 
   mg::Matrix<MatrixFreeLevelVector> mg_matrix(mg_matrices);
 
@@ -285,7 +291,7 @@ void SolverClass<dim, degree>::solve() {
     mg_interface_matrices[level].initialize(mg_matrices[level]);
   mg::Matrix<MatrixFreeLevelVector> mg_interface(mg_interface_matrices);
 
-  Multigrid<MatrixFreeLevelVector> mg(mg_matrix, coarse_grid_solver, mg_transfer, mg_smoother, mg_smoother);
+  Multigrid<MatrixFreeLevelVector> mg(mg_matrix, mg_coarse, mg_transfer, mg_smoother, mg_smoother);
   mg.set_edge_matrices(mg_interface, mg_interface);
 
   PreconditionMG<dim, MatrixFreeLevelVector, MGTransferMatrixFree<dim, float>> preconditioner(dof_handler, mg, mg_transfer);
