@@ -29,4 +29,5 @@ find_package(deal.II 9.3.1 REQUIRED
 deal_ii_initialize_cached_variables()
 
 # Add useful compiler flags.
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wfloat-conversion -Wmissing-braces -Wnon-virtual-dtor -march=native -O3")
+set(TARGET_ARCH "native" CACHE STRING "Target architecture for vectorization (e.g. native, skylake-avx512, core-avx2)")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wfloat-conversion -Wmissing-braces -Wnon-virtual-dtor -march=${TARGET_ARCH} -O3")
