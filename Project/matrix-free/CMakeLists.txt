@@ -3,5 +3,5 @@ project(matrix_free LANGUAGES CXX C)
 
 include(../common/cmake-common.cmake)
 
-add_executable(matrix_free ./main.cpp ./MatrixFree.cpp)
+add_executable(matrix_free ./main.cpp ./ADROperator.cpp ./MatrixFree.cpp)
 deal_ii_setup_target(matrix_free)
