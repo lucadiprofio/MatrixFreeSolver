@@ -90,6 +90,9 @@ void SolverClass<dim, degree>::setup_system() {
       (update_values | update_gradients | update_JxW_values |
        update_quadrature_points); 
 
+  additional_data.mapping_update_flags_boundary_faces = 
+    (update_values | update_JxW_values | update_quadrature_points);
+
   std::shared_ptr<MatrixFree<dim, double>> system_mf_storage = std::make_shared<MatrixFree<dim, double>>();
   system_mf_storage->reinit(mapping, dof_handler, constraints, QGauss<1>(fe.degree + 1), additional_data);
   system_matrix.initialize(system_mf_storage);
@@ -221,7 +224,6 @@ void SolverClass<dim, degree>::assemble_rhs() {
         continue;
 
       phi_face.reinit(face);
-      phi_face.evaluate(EvaluationFlags::values);
       for (unsigned int q = 0; q < phi_face.n_q_points; ++q) {
         const auto x_q = phi_face.quadrature_point(q);
         phi_face.submit_value(neumann_function.value(x_q), q);
