@@ -70,7 +70,7 @@ private:
   using MatrixFreeActiveVector = LinearAlgebra::distributed::Vector<double>;
   using MatrixFreeLevelVector = LinearAlgebra::distributed::Vector<float>;
 
-  using SolverType = SolverGMRES<MatrixFreeActiveVector>;
+  template <typename VecType> using SolverType = SolverGMRES<VecType>;
 
   void init_mesh();
   void setup_system();

@@ -285,8 +285,8 @@ void SolverClass<dim, degree>::solve() {
   {
     TimerOutput::Scope timing(computing_timer, "Solve: GMRES");
 
-    SolverType::AdditionalData gmres_data(false, 100);
-    SolverType solver(solver_control, gmres_data);
+    SolverType<MatrixFreeActiveVector>::AdditionalData gmres_data(false, 100);
+    SolverType<MatrixFreeActiveVector> solver(solver_control, gmres_data);
     solver.solve(system_matrix, distributed_solution, system_rhs, preconditioner);
   }
 
