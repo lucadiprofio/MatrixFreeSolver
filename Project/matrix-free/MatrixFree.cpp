@@ -55,6 +55,8 @@ void SolverClass<dim, degree>::init_mesh() {
             cell->face(f)->set_boundary_id(boundary_id_walls);
         }
   }
+
+  triangulation.refine_global(2);
 }
 
 
