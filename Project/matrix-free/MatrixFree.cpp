@@ -131,7 +131,9 @@ void SolverClass<dim, degree>::setup_multigrid() {
     IndexSet locally_relevant_level_dofs;
     DoFTools::extract_locally_relevant_level_dofs(dof_handler, level, locally_relevant_level_dofs);
 
-    AffineConstraints<double> level_constraints(locally_relevant_level_dofs);
+    AffineConstraints<double> level_constraints;
+    level_constraints.clear();
+    level_constraints.reinit(locally_relevant_level_dofs);
     for (const types::global_dof_index dof_index : mg_constrained_dofs.get_boundary_indices(level))
       level_constraints.add_line(dof_index); // Adds a constraint in AffCon: x_i = 0
     level_constraints.close();
