@@ -57,9 +57,9 @@ private:
   void setup_multigrid();
   void assemble_rhs();
   void solve();
-  void refine_grid();
-  void output_results(const unsigned int);
-  void estimate_error(const unsigned int);
+  void refine_grid(const MatrixFreeActiveVector &);
+  void output_results(const unsigned int, const MatrixFreeActiveVector &);
+  void estimate_error(const unsigned int, const MatrixFreeActiveVector &);
   void print_tables();
   void track_memory() const;
 
@@ -79,7 +79,7 @@ private:
   AffineConstraints<double> constraints;
 
   MatrixFreeActiveMatrix system_matrix;
-  MatrixFreeActiveVector locally_relevant_solution;
+  MatrixFreeActiveVector solution;
   MatrixFreeActiveVector system_rhs;
 
   MGConstrainedDoFs mg_constrained_dofs;

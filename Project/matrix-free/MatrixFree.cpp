@@ -106,7 +106,7 @@ void SolverClass<dim, degree>::setup_system() {
   // in parallel because read_dof_values_plain() uses MatrixFree's cached ghost
   // offsets to index into the vector's memory — those offsets are wrong if the
   // partitioner doesn't match.
-  system_matrix.initialize_dof_vector(locally_relevant_solution);
+  system_matrix.initialize_dof_vector(solution);
   system_matrix.initialize_dof_vector(system_rhs);
 }
 
@@ -158,9 +158,9 @@ template <unsigned int dim, unsigned int degree>
 void SolverClass<dim, degree>::assemble_rhs() {
   TimerOutput::Scope timing(computing_timer, "Assemble right-hand side");
 
-  locally_relevant_solution = 0.;
-  constraints.distribute(locally_relevant_solution);
-  locally_relevant_solution.update_ghost_values();
+  solution = 0.;
+  constraints.distribute(solution);
+  solution.update_ghost_values();
 
   system_rhs = 0.;
   FEEvaluation<dim, degree, degree + 1, 1, double> phi(*system_matrix.get_matrix_free());
@@ -168,7 +168,7 @@ void SolverClass<dim, degree>::assemble_rhs() {
   const unsigned int n_batches = system_matrix.get_matrix_free()->n_cell_batches();
   for (unsigned int cell = 0; cell < n_batches; ++cell) {
     phi.reinit(cell);
-    phi.read_dof_values_plain(locally_relevant_solution); // plain to allow inhomogeneous Dirichlet boundary conditions
+    phi.read_dof_values_plain(solution); // plain to allow inhomogeneous Dirichlet boundary conditions
 
     phi.evaluate(EvaluationFlags::gradients | EvaluationFlags::values);
 
@@ -241,14 +241,6 @@ template <unsigned int dim, unsigned int degree>
 void SolverClass<dim, degree>::solve() {
   TimerOutput::Scope t(computing_timer, "Solve");
 
-  // distributed_solution must use the MatrixFree partitioner: both the GMG
-  // preconditioner (vmult) and GMRES matrix-vector products require ghost
-  // entries compatible with the MatrixFree object.
-  MatrixFreeActiveVector distributed_solution;
-  system_matrix.initialize_dof_vector(distributed_solution);
-  distributed_solution = 0.;
-  constraints.distribute(distributed_solution);
-
   computing_timer.enter_subsection("Solve: Preconditioner setup");
 
   MGTransferMatrixFree<dim, float> mg_transfer(mg_constrained_dofs);
@@ -309,33 +301,31 @@ void SolverClass<dim, degree>::solve() {
   // Measure 1 V-Cycle
   {
     TimerOutput::Scope timing(computing_timer, "Solve: 1 multigrid V-cycle");
-    preconditioner.vmult(distributed_solution, system_rhs);
+    preconditioner.vmult(solution, system_rhs);
   }
 
-  distributed_solution = 0.;
-  constraints.distribute(distributed_solution);
+  solution = 0.;
+  constraints.distribute(solution);
 
   SolverControl solver_control(1000, 1e-12 + 1e-8 * system_rhs.l2_norm());
   {
     TimerOutput::Scope timing(computing_timer, "Solve: GMRES");
 
-    SolverType<MatrixFreeActiveVector>::AdditionalData gmres_data(false, 100);
+    SolverType<MatrixFreeActiveVector>::AdditionalData gmres_data(false, 50);
     SolverType<MatrixFreeActiveVector> solver(solver_control, gmres_data);
-    solver.solve(system_matrix, distributed_solution, system_rhs, preconditioner);
+    solver.solve(system_matrix, solution, system_rhs, preconditioner);
   }
 
   // this call sets the constrained DOFs to their prescribed Dirichlet values,
   // giving u = u_0 + u_D.
-  constraints.distribute(distributed_solution);
-  locally_relevant_solution = distributed_solution;
-  locally_relevant_solution.update_ghost_values(); // sync ghost entries across MPI ranks
+  constraints.distribute(solution);
 
   pcout << "\tNumber of GMRES iterations: " << solver_control.last_step() << std::endl;
 }
 
 
 template <unsigned int dim, unsigned int degree>
-void SolverClass<dim, degree>::refine_grid() {
+void SolverClass<dim, degree>::refine_grid(const MatrixFreeActiveVector &locally_relevant_solution) {
   TimerOutput::Scope t(computing_timer, "Refine");
 
   Vector<float> estimated_error_per_cell(triangulation.n_active_cells());
@@ -354,7 +344,7 @@ void SolverClass<dim, degree>::refine_grid() {
 
 
 template <unsigned int dim, unsigned int degree>
-void SolverClass<dim, degree>::output_results(const unsigned int cycle) {
+void SolverClass<dim, degree>::output_results(const unsigned int cycle, const MatrixFreeActiveVector &locally_relevant_solution) {
   TimerOutput::Scope timing(computing_timer, "Output results");
 
   if (triangulation.n_global_active_cells() > 20000000)
@@ -375,7 +365,7 @@ void SolverClass<dim, degree>::output_results(const unsigned int cycle) {
 
 
 template <unsigned int dim, unsigned int degree>
-void SolverClass<dim, degree>::estimate_error(const unsigned int cycle) {
+void SolverClass<dim, degree>::estimate_error(const unsigned int cycle, const MatrixFreeActiveVector &locally_relevant_solution) {
   Vector<float> difference_per_cell(triangulation.n_active_cells());
 
   // Fill difference_per_cell and compute L2 error
@@ -492,10 +482,6 @@ void SolverClass<dim, degree>::run() {
   for (unsigned int cycle = 0; cycle < n_cycles; ++cycle) {
     pcout << "Cycle " << cycle << ':' << std::endl;
 
-    if (cycle > 0)
-      triangulation.refine_global(1);
-      // refine_grid();
-
     setup_system();
     setup_multigrid();
 
@@ -505,8 +491,20 @@ void SolverClass<dim, degree>::run() {
     assemble_rhs();
     solve();
 
-    output_results(cycle);
-    estimate_error(cycle);
+    {
+      // Create relevant dof vector for post-processing
+      MatrixFreeActiveVector relevant_solution;
+      relevant_solution.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+      relevant_solution = solution;
+      relevant_solution.update_ghost_values();
+
+      // output_results(cycle, relevant_solution);
+      estimate_error(cycle, relevant_solution);
+
+      if (cycle < n_cycles - 1)
+        triangulation.refine_global(1);
+        // refine_grid(relevant_solution);
+    }
 
     computing_timer.print_summary();
     computing_timer.reset();
