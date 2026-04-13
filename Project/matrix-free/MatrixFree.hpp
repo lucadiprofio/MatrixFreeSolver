@@ -16,27 +16,25 @@
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/solver_gmres.h>
+#include <deal.II/lac/solver_cg.h>
 
 #include "ADROperator.hpp"
 
 namespace MtxFree {
-using namespace dealii;
-
 template <unsigned int dim, unsigned int degree> class SolverClass {
 public:
   SolverClass()
       : mpi_communicator(MPI_COMM_WORLD),
-        mpi_size(Utilities::MPI::n_mpi_processes(mpi_communicator)),
-        mpi_rank(Utilities::MPI::this_mpi_process(mpi_communicator)),
+        mpi_size(dealii::Utilities::MPI::n_mpi_processes(mpi_communicator)),
+        mpi_rank(dealii::Utilities::MPI::this_mpi_process(mpi_communicator)),
 
         triangulation(mpi_communicator,
-                      Triangulation<dim>::limit_level_difference_at_vertices,
-                      parallel::distributed::Triangulation<dim>::construct_multigrid_hierarchy),
+                      dealii::Triangulation<dim>::limit_level_difference_at_vertices,
+                      dealii::parallel::distributed::Triangulation<dim>::construct_multigrid_hierarchy),
         mapping(), fe(degree), dof_handler(triangulation),
 
         pcout(std::cout, mpi_rank == 0),
-        computing_timer(mpi_communicator, pcout, TimerOutput::summary,
-                        TimerOutput::wall_times),
+        computing_timer(mpi_communicator, pcout, dealii::TimerOutput::summary, dealii::TimerOutput::wall_times),
 
         mu_function(), b_function(), sigma_function(), rhs_function(),
         dirichlet_function_inlet(), dirichlet_function_walls(),
@@ -47,10 +45,10 @@ public:
 private:
   using MatrixFreeActiveMatrix = ADR_Operator<dim, degree, double>;
   using MatrixFreeLevelMatrix = ADR_Operator<dim, degree, float>;
-  using MatrixFreeActiveVector = LinearAlgebra::distributed::Vector<double>;
-  using MatrixFreeLevelVector = LinearAlgebra::distributed::Vector<float>;
+  using MatrixFreeActiveVector = dealii::LinearAlgebra::distributed::Vector<double>;
+  using MatrixFreeLevelVector = dealii::LinearAlgebra::distributed::Vector<float>;
 
-  template <typename VecType> using SolverType = SolverGMRES<VecType>;
+  template <typename VecType> using SolverType = dealii::SolverGMRES<VecType>;
 
   void init_mesh();
   void setup_system();
@@ -68,26 +66,26 @@ private:
   const unsigned int mpi_size;
   const unsigned int mpi_rank;
 
-  parallel::distributed::Triangulation<dim> triangulation;
+  dealii::parallel::distributed::Triangulation<dim> triangulation;
   const MappingQ1<dim> mapping;
   const FE_Q<dim> fe;
 
-  DoFHandler<dim> dof_handler;
+  dealii::DoFHandler<dim> dof_handler;
 
-  IndexSet locally_owned_dofs;
-  IndexSet locally_relevant_dofs;
-  AffineConstraints<double> constraints;
+  dealii::IndexSet locally_owned_dofs;
+  dealii::IndexSet locally_relevant_dofs;
+  dealii::AffineConstraints<double> constraints;
 
   MatrixFreeActiveMatrix system_matrix;
   MatrixFreeActiveVector solution;
   MatrixFreeActiveVector system_rhs;
 
-  MGConstrainedDoFs mg_constrained_dofs;
-  MGLevelObject<MatrixFreeLevelMatrix> mg_matrices;
+  dealii::MGConstrainedDoFs mg_constrained_dofs;
+  dealii::MGLevelObject<MatrixFreeLevelMatrix> mg_matrices;
 
-  ConditionalOStream pcout;
-  ConvergenceTable convergence_table;
-  TimerOutput computing_timer;
+  dealii::ConditionalOStream pcout;
+  dealii::ConvergenceTable convergence_table;
+  dealii::TimerOutput computing_timer;
 
   // problem data
   DiffusionCoefficient<dim> mu_function;
@@ -99,7 +97,7 @@ private:
   NeumannBoundaryValues<dim> neumann_function;
   ExactSolution<dim> exact_solution;
 
-  std::set<types::boundary_id> neumann_boundary_ids{};
+  std::set<dealii::types::boundary_id> neumann_boundary_ids{};
 
 };
 

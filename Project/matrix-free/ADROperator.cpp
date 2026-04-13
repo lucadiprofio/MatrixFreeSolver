@@ -5,7 +5,6 @@
 
 namespace MtxFree {
 using namespace dealii;
-using namespace manufactured;
 
 template <int dim, int fe_degree, typename number>
 void ADR_Operator<dim, fe_degree, number>::clear() {

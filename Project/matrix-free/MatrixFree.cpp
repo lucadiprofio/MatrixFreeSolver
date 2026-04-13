@@ -23,7 +23,7 @@
 
 
 namespace MtxFree {
-
+using namespace dealii;
 
 template <unsigned int dim, unsigned int degree>
 void SolverClass<dim, degree>::init_mesh() {
