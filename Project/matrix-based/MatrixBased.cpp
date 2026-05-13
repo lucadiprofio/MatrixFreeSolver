@@ -379,6 +379,7 @@ void SolverClass<dim, degree>::run() {
   {
     const unsigned int n_mpi_procs = Utilities::MPI::n_mpi_processes(mpi_communicator);
     pcout << "===========================================" << std::endl;
+    pcout << "Polynomial degree " << degree << std::endl;
     pcout << "Running with " << n_mpi_procs << " MPI process(es)" << std::endl;
     pcout << "===========================================" << std::endl;
   }

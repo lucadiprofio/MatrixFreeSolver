@@ -473,6 +473,7 @@ void SolverClass<dim, degree>::run() {
     const unsigned int n_vect_bits = 8 * sizeof(double) * n_vect_doubles;
 
     pcout << "===========================================" << std::endl;
+    pcout << "Polynomial degree " << degree << std::endl;
     pcout << "Running with " << n_mpi_procs << " MPI process(es)" << std::endl;
     pcout << "Vectorization over " << n_vect_doubles
           << " doubles = " << n_vect_bits << " bits ("
