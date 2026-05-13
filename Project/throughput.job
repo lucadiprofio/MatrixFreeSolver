@@ -1,0 +1,15 @@
+#!/bin/bash
+#PBS -N matrix-free-PDE
+#PBS -q cpu
+#PBS -l select=1:ncpus=28:mem=32gb
+#PBS -l walltime=01:30:00
+#PBS -j oe
+
+cd $PBS_O_WORKDIR
+
+echo "Starting throughput job..."
+
+mpirun -np 28 ./matrix-based/build/matrix_based > ./matrix-based/out/throughput.out
+mpirun -np 28 ./matrix-free/build/matrix_free > ./matrix-free/out/throughput.out
+
+echo "Throughput job finished!"

@@ -1,0 +1,96 @@
+#!/bin/bash
+#PBS -N matrix-free-PDE
+#PBS -q cpu
+#PBS -l select=1:ncpus=28:mem=32gb
+#PBS -l walltime=01:30:00
+#PBS -j oe
+
+cd $PBS_O_WORKDIR
+
+echo "Starting strong job..."
+
+rm ./matrix-free/out/strong.out
+rm ./matrix-based/out/strong.out
+
+mpirun -np 1 ./matrix-based/build/matrix_based >> ./matrix-based/out/strong.out
+mpirun -np 1 ./matrix-free/build/matrix_free >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo >> ./matrix-based/out/strong.out
+
+mpirun -np 2 ./matrix-based/build/matrix_based >> ./matrix-based/out/strong.out
+mpirun -np 2 ./matrix-free/build/matrix_free >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo >> ./matrix-based/out/strong.out
+
+mpirun -np 4 ./matrix-based/build/matrix_based >> ./matrix-based/out/strong.out
+mpirun -np 4 ./matrix-free/build/matrix_free >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo >> ./matrix-based/out/strong.out
+
+mpirun -np 8 ./matrix-based/build/matrix_based >> ./matrix-based/out/strong.out
+mpirun -np 8 ./matrix-free/build/matrix_free >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo >> ./matrix-based/out/strong.out
+
+mpirun -np 16 ./matrix-based/build/matrix_based >> ./matrix-based/out/strong.out
+mpirun -np 16 ./matrix-free/build/matrix_free >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo >> ./matrix-based/out/strong.out
+
+mpirun -np 28 ./matrix-based/build/matrix_based >> ./matrix-based/out/strong.out
+mpirun -np 28 ./matrix-free/build/matrix_free >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo =========================================== >> ./matrix-free/out/strong.out
+echo >> ./matrix-free/out/strong.out
+
+echo >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo =========================================== >> ./matrix-based/out/strong.out
+echo >> ./matrix-based/out/strong.out
+
+mpirun -np 32 ./matrix-based/build/matrix_based >> ./matrix-based/out/strong.out
+mpirun -np 32 ./matrix-free/build/matrix_free >> ./matrix-free/out/strong.out
+
+echo "Strong job finished!"
