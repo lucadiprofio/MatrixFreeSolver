@@ -155,11 +155,17 @@ void ADR_Operator<dim, fe_degree, number>::compute_diagonal() {
 template class ADR_Operator<3, 1, double>;
 template class ADR_Operator<3, 2, double>;
 template class ADR_Operator<3, 3, double>;
+template class ADR_Operator<3, 4, double>;
 template class ADR_Operator<3, 5, double>;
+template class ADR_Operator<3, 6, double>;
+template class ADR_Operator<3, 7, double>;
 
 template class ADR_Operator<3, 1, float>;
 template class ADR_Operator<3, 2, float>;
 template class ADR_Operator<3, 3, float>;
+template class ADR_Operator<3, 4, float>;
 template class ADR_Operator<3, 5, float>;
+template class ADR_Operator<3, 6, float>;
+template class ADR_Operator<3, 7, float>;
 
 } // namespace MtxFree

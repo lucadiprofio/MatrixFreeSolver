@@ -527,6 +527,9 @@ void SolverClass<dim, degree>::run() {
 template class SolverClass<3, 1>;
 template class SolverClass<3, 2>;
 template class SolverClass<3, 3>;
+template class SolverClass<3, 4>;
 template class SolverClass<3, 5>;
+template class SolverClass<3, 6>;
+template class SolverClass<3, 7>;
 
 } // namespace MtxFree
