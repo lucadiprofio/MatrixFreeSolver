@@ -23,12 +23,14 @@
 
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
-#include <deal.II/lac/full_matrix.h>
-#include <deal.II/lac/generic_linear_algebra.h>
-#include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/sparsity_tools.h>
-#include <deal.II/lac/trilinos_precondition.h>
+
+#include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/vector.h>
+
+#include <deal.II/lac/trilinos_precondition.h>
+#include <deal.II/lac/trilinos_sparse_matrix.h>
+#include <deal.II/lac/trilinos_solver.h>
 
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
@@ -37,14 +39,14 @@
 #include <fstream>
 #include <iostream>
 
-
 #include "../test/manufactured.hpp"
 #include "../test/test1.hpp"
 #include "../test/test2.hpp"
 
+
 namespace MatrixBased {
 using namespace dealii;
-using namespace manufactured;
+using namespace test1;
 
 template <unsigned int dim, unsigned int degree> class SolverClass {
 public:
@@ -69,16 +71,16 @@ private:
   using MatrixType = TrilinosWrappers::SparseMatrix;
   using VectorType = TrilinosWrappers::MPI::Vector;
 
-  using SolverType = TrilinosWrappers::SolverGMRES;
+  using SolverType = TrilinosWrappers::SolverCG;
   using PrecType = TrilinosWrappers::PreconditionAMG;
 
   void init_mesh();
   void setup_system();
   void assemble_system();
   void solve();
-  void refine_grid();
-  void output_results(const unsigned int);
-  void estimate_error(const unsigned int);
+  void refine_grid(const VectorType &);
+  void output_results(const unsigned int, const VectorType &);
+  void estimate_error(const unsigned int, const VectorType &);
   void print_tables();
   void track_memory() const;
 
@@ -100,7 +102,7 @@ private:
   AffineConstraints<double> constraints;
 
   MatrixType system_matrix;
-  VectorType locally_relevant_solution;
+  VectorType solution;
   VectorType system_rhs;
 
   ConditionalOStream pcout;

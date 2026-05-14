@@ -32,6 +32,8 @@ void SolverClass<dim, degree>::init_mesh() {
             cell->face(f)->set_boundary_id(boundary_id_walls);
         }
   }
+
+  triangulation.refine_global(2);
 }
 
 
@@ -45,10 +47,8 @@ void SolverClass<dim, degree>::setup_system() {
   locally_owned_dofs = dof_handler.locally_owned_dofs();
   DoFTools::extract_locally_relevant_dofs(dof_handler, locally_relevant_dofs);
 
-  locally_relevant_solution.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+  solution.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
   system_rhs.reinit(locally_owned_dofs, mpi_communicator);
-
-  locally_relevant_solution = 0.0;
 
   constraints.clear();
   constraints.reinit(locally_relevant_dofs);
@@ -191,36 +191,17 @@ template <unsigned int dim, unsigned int degree>
 void SolverClass<dim, degree>::solve() {
   TimerOutput::Scope t(computing_timer, "Solve");
 
-  SolverControl solver_control(1000, 1e-12 + 1e-8 * system_rhs.l2_norm());
-  VectorType distributed_solution(locally_owned_dofs, mpi_communicator);
-
   computing_timer.enter_subsection("Solve: Preconditioner setup");
 
-  Teuchos::ParameterList ml_params;
-
-  // Uncoupled
-  ml_params.set("aggregation: type", "Uncoupled");
-  ml_params.set("aggregation: damping factor", 0.0);
-
-  // Setup Chebyshev
-  ml_params.set("smoother: type", "Chebyshev");
-  ml_params.set("smoother: Chebyshev alpha", 20.0);
-  ml_params.set("smoother: sweeps", 20);
-  ml_params.set("smoother: Chebyshev eig boost", 1.5);
-
-  ml_params.set("eigen-analysis: type", "power-method");
-  ml_params.set("eigen-analysis: iterations", 25);
-
-  // Scalar PDE
-  ml_params.set("PDE equations", 1);
-
+  // Preconditioner and smoother setup
   PrecType preconditioner;
-  // PrecType::AdditionalData data;
-  // data.elliptic = false;
-  // data.smoother_type = "Chebyshev";
-  // data.smoother_sweeps = 2;
+  PrecType::AdditionalData data;
+  data.elliptic = true;
+  data.smoother_type = "Chebyshev";
+  data.smoother_sweeps = 2;
 
-  preconditioner.initialize(system_matrix, ml_params);
+  preconditioner.initialize(system_matrix, data);
+  
   computing_timer.leave_subsection("Solve: Preconditioner setup");
 
   track_memory();
@@ -228,26 +209,28 @@ void SolverClass<dim, degree>::solve() {
   // Measure 1 V-Cycle
   {
     TimerOutput::Scope timing(computing_timer, "Solve: 1 multigrid V-cycle");
-    preconditioner.vmult(distributed_solution, system_rhs);
+    preconditioner.vmult(solution, system_rhs);
   }
-  distributed_solution = 0.;
 
+  solution = 0.;
+
+  SolverControl solver_control(1000, 1e-12 + 1e-8 * system_rhs.l2_norm());
   {
-    TimerOutput::Scope timing(computing_timer, "Solve: GMRES");
+    TimerOutput::Scope timing(computing_timer, "Solve: CG/GMRES");
 
-    SolverType::AdditionalData gmres_data(false, 50);
-    SolverType solver(solver_control, gmres_data);
-    solver.solve(system_matrix, distributed_solution, system_rhs, preconditioner);
+    // SolverType::AdditionalData gmres_data(false, 50);
+    SolverType solver(solver_control);
+    solver.solve(system_matrix, solution, system_rhs, preconditioner);
   }
-  constraints.distribute(distributed_solution);
-  locally_relevant_solution = distributed_solution;
 
-  pcout << "\tNumber of GMRES iterations: " << solver_control.last_step() << std::endl;
+  constraints.distribute(solution);
+  
+  pcout << "\tNumber of CG/GMRES iterations: " << solver_control.last_step() << std::endl;
 }
 
 
 template <unsigned int dim, unsigned int degree>
-void SolverClass<dim, degree>::refine_grid() {
+void SolverClass<dim, degree>::refine_grid(const VectorType &locally_relevant_solution) {
   TimerOutput::Scope t(computing_timer, "Refine");
 
   Vector<float> estimated_error_per_cell(triangulation.n_active_cells());
@@ -267,7 +250,7 @@ void SolverClass<dim, degree>::refine_grid() {
 
 
 template <unsigned int dim, unsigned int degree>
-void SolverClass<dim, degree>::output_results(const unsigned int cycle) {
+void SolverClass<dim, degree>::output_results(const unsigned int cycle, const VectorType &locally_relevant_solution) {
   TimerOutput::Scope timing(computing_timer, "Output results");
 
   DataOut<dim> data_out;
@@ -277,7 +260,7 @@ void SolverClass<dim, degree>::output_results(const unsigned int cycle) {
   data_out.build_patches();
 
   DataOutBase::VtkFlags flags;
-  flags.compression_level = DataOutBase::CompressionLevel::best_speed;
+  flags.compression_level = DataOutBase::VtkFlags::best_speed;
   data_out.set_flags(flags);
 
   data_out.write_vtu_with_pvtu_record("../out/", "solution", cycle,
@@ -286,7 +269,7 @@ void SolverClass<dim, degree>::output_results(const unsigned int cycle) {
 
 
 template <unsigned int dim, unsigned int degree>
-void SolverClass<dim, degree>::estimate_error(const unsigned int cycle) {
+void SolverClass<dim, degree>::estimate_error(const unsigned int cycle, const VectorType &locally_relevant_solution) {
   Vector<float> difference_per_cell(triangulation.n_active_cells());
 
   // Fill difference_per_cell and compute L2 error
@@ -389,10 +372,6 @@ void SolverClass<dim, degree>::run() {
   for (unsigned int cycle = 0; cycle < n_cycles; ++cycle) {
     pcout << "Cycle " << cycle << ':' << std::endl;
 
-    if (cycle > 0)
-      triangulation.refine_global(1);
-      // refine_grid();
-
     setup_system();
 
     pcout << "\tNumber of active cells: " << triangulation.n_global_active_cells() << std::endl;
@@ -401,8 +380,20 @@ void SolverClass<dim, degree>::run() {
     assemble_system();
     solve();
 
-    // output_results(cycle);
-    estimate_error(cycle);
+    {
+      // Create relevant dof vector for post-processing
+      VectorType relevant_solution;
+      relevant_solution.reinit(locally_owned_dofs, locally_relevant_dofs, mpi_communicator);
+      relevant_solution = solution;
+      relevant_solution.update_ghost_values();
+
+      // output_results(cycle, relevant_solution);
+      estimate_error(cycle, relevant_solution);
+
+      if (cycle < n_cycles - 1)
+        triangulation.refine_global(1);
+        // refine_grid(relevant_solution);
+    }
 
     computing_timer.print_summary();
     computing_timer.reset();
