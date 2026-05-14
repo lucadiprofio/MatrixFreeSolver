@@ -313,7 +313,7 @@ void SolverClass<dim, degree>::solve() {
 
   SolverControl solver_control(1000, 1e-12 + 1e-8 * system_rhs.l2_norm());
   {
-    TimerOutput::Scope timing(computing_timer, "Solve: GMRES");
+    TimerOutput::Scope timing(computing_timer, "Solve: CG/GMRES");
 
     SolverType<MatrixFreeActiveVector>::AdditionalData gmres_data(false, 50);
     SolverType<MatrixFreeActiveVector> solver(solver_control, gmres_data);
@@ -324,7 +324,7 @@ void SolverClass<dim, degree>::solve() {
   // giving u = u_0 + u_D.
   constraints.distribute(solution);
 
-  pcout << "\tNumber of GMRES iterations: " << solver_control.last_step() << std::endl;
+  pcout << "\tNumber of CG/GMRES iterations: " << solver_control.last_step() << std::endl;
 }
 
 
