@@ -488,6 +488,10 @@ void SolverClass<dim, degree>::run() {
     pcout << "Cycle " << cycle << ':' << std::endl;
 
     setup_system();
+
+    if (dof_handler.n_dofs() > 200000000)
+      break;
+
     setup_multigrid();
 
     pcout << "\tNumber of active cells: " << triangulation.n_global_active_cells() << std::endl;

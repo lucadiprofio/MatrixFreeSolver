@@ -374,6 +374,9 @@ void SolverClass<dim, degree>::run() {
 
     setup_system();
 
+    if (dof_handler.n_dofs() > 200000000)
+      break;
+
     pcout << "\tNumber of active cells: " << triangulation.n_global_active_cells() << std::endl;
     pcout << "\tNumber of dofs: " << dof_handler.n_dofs() << std::endl;
 
