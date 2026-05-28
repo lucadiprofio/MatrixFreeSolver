@@ -9,30 +9,30 @@ cd $PBS_O_WORKDIR
 
 echo "Starting throughput job..."
 
-rm ./matrix-free/out/poly.out
-rm ./matrix-based/out/poly.out
+rm ./matrix-free/out/throughput.out
+rm ./matrix-based/out/throughput.out
 
 mpirun -np 1 ./matrix-free/build/matrix_free &>> ./matrix-free/out/throughput.out
 
-echo >> ./matrix-free/out/poly.out
-echo >> ./matrix-free/out/poly.out
+echo >> ./matrix-free/out/throughput.out
+echo >> ./matrix-free/out/throughput.out
 
 mpirun -np 16 ./matrix-free/build/matrix_free &>> ./matrix-free/out/throughput.out
 
-echo >> ./matrix-free/out/poly.out
-echo >> ./matrix-free/out/poly.out
+echo >> ./matrix-free/out/throughput.out
+echo >> ./matrix-free/out/throughput.out
 
 mpirun -np 32 ./matrix-free/build/matrix_free &>> ./matrix-free/out/throughput.out
 
 mpirun -np 1 ./matrix-based/build/matrix_based &>> ./matrix-based/out/throughput.out
 
-echo >> ./matrix-based/out/poly.out
-echo >> ./matrix-based/out/poly.out
+echo >> ./matrix-based/out/throughput.out
+echo >> ./matrix-based/out/throughput.out
 
 mpirun -np 16 ./matrix-based/build/matrix_based &>> ./matrix-based/out/throughput.out
 
-echo >> ./matrix-based/out/poly.out
-echo >> ./matrix-based/out/poly.out
+echo >> ./matrix-based/out/throughput.out
+echo >> ./matrix-based/out/throughput.out
 
 mpirun -np 32 ./matrix-based/build/matrix_based &>> ./matrix-based/out/throughput.out
 
