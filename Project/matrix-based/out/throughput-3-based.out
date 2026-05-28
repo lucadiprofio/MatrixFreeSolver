@@ -1,0 +1,295 @@
+===========================================
+Polynomial degree 3
+Running with 32 MPI process(es)
+===========================================
+Cycle 0:
+	Number of active cells: 4096
+	Number of dofs: 117649
+	Memory (RSS) [GB] -> Sum: 6.72411 | Avg: 0.210128 | Max: 0.213917
+	Number of CG/GMRES iterations: 39
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      1.21s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |     0.459s |        38% |
+| Generate mesh                   |         1 |     0.107s |       8.9% |
+| Setup                           |         1 |     0.162s |        13% |
+| Solve                           |         1 |     0.434s |        36% |
+| Solve: 1 multigrid V-cycle      |         1 |   0.00793s |      0.66% |
+| Solve: CG/GMRES                 |         1 |       0.3s |        25% |
+| Solve: Preconditioner setup     |         1 |     0.119s |       9.8% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 1:
+	Number of active cells: 32768
+	Number of dofs: 912673
+	Memory (RSS) [GB] -> Sum: 9.21386 | Avg: 0.287933 | Max: 0.298061
+	Number of CG/GMRES iterations: 43
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      11.2s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |      3.58s |        32% |
+| Setup                           |         1 |     0.678s |       6.1% |
+| Solve                           |         1 |      6.75s |        61% |
+| Solve: 1 multigrid V-cycle      |         1 |    0.0516s |      0.46% |
+| Solve: CG/GMRES                 |         1 |      5.92s |        53% |
+| Solve: Preconditioner setup     |         1 |     0.737s |       6.6% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 2:
+	Number of active cells: 262144
+	Number of dofs: 7189057
+	Memory (RSS) [GB] -> Sum: 28.4373 | Avg: 0.888664 | Max: 0.926331
+	Number of CG/GMRES iterations: 45
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      65.5s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |      27.4s |        42% |
+| Setup                           |         1 |      4.78s |       7.3% |
+| Solve                           |         1 |      32.5s |        50% |
+| Solve: 1 multigrid V-cycle      |         1 |     0.501s |      0.77% |
+| Solve: CG/GMRES                 |         1 |      26.4s |        40% |
+| Solve: Preconditioner setup     |         1 |      5.44s |       8.3% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 3:
+	Number of active cells: 2097152
+	Number of dofs: 57066625
+	Memory (RSS) [GB] -> Sum: 179.842 | Avg: 5.62005 | Max: 5.7981
+	Number of CG/GMRES iterations: 47
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       458s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |       174s |        38% |
+| Setup                           |         1 |      30.8s |       6.7% |
+| Solve                           |         1 |       248s |        54% |
+| Solve: 1 multigrid V-cycle      |         1 |      3.35s |      0.73% |
+| Solve: CG/GMRES                 |         1 |       205s |        45% |
+| Solve: Preconditioner setup     |         1 |      38.4s |       8.4% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 4:
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 17 with PID 0 on node cpu01 exited on signal 9 (Killed).
+--------------------------------------------------------------------------
+
+
+===========================================
+Polynomial degree 3
+Running with 32 MPI process(es)
+===========================================
+Cycle 0:
+	Number of active cells: 4096
+	Number of dofs: 117649
+	Memory (RSS) [GB] -> Sum: 6.61565 | Avg: 0.206739 | Max: 0.210407
+	Number of CG/GMRES iterations: 39
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      1.14s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |     0.452s |        40% |
+| Generate mesh                   |         1 |    0.0633s |       5.5% |
+| Setup                           |         1 |     0.178s |        16% |
+| Solve                           |         1 |      0.42s |        37% |
+| Solve: 1 multigrid V-cycle      |         1 |   0.00865s |      0.76% |
+| Solve: CG/GMRES                 |         1 |     0.289s |        25% |
+| Solve: Preconditioner setup     |         1 |     0.114s |        10% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 1:
+	Number of active cells: 32768
+	Number of dofs: 912673
+	Memory (RSS) [GB] -> Sum: 9.10974 | Avg: 0.284679 | Max: 0.294682
+	Number of CG/GMRES iterations: 43
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      8.17s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |      2.13s |        26% |
+| Setup                           |         1 |     0.723s |       8.9% |
+| Solve                           |         1 |      5.19s |        63% |
+| Solve: 1 multigrid V-cycle      |         1 |     0.044s |      0.54% |
+| Solve: CG/GMRES                 |         1 |      4.18s |        51% |
+| Solve: Preconditioner setup     |         1 |     0.916s |        11% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 2:
+	Number of active cells: 262144
+	Number of dofs: 7189057
+	Memory (RSS) [GB] -> Sum: 28.2985 | Avg: 0.884328 | Max: 0.923302
+	Number of CG/GMRES iterations: 45
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      59.3s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |      23.3s |        39% |
+| Setup                           |         1 |      3.18s |       5.4% |
+| Solve                           |         1 |      32.1s |        54% |
+| Solve: 1 multigrid V-cycle      |         1 |     0.439s |      0.74% |
+| Solve: CG/GMRES                 |         1 |      26.4s |        45% |
+| Solve: Preconditioner setup     |         1 |      5.02s |       8.5% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 3:
+	Number of active cells: 2097152
+	Number of dofs: 57066625
+	Memory (RSS) [GB] -> Sum: 179.935 | Avg: 5.62297 | Max: 5.79464
+	Number of CG/GMRES iterations: 47
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       462s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |       180s |        39% |
+| Setup                           |         1 |      31.3s |       6.8% |
+| Solve                           |         1 |       246s |        53% |
+| Solve: 1 multigrid V-cycle      |         1 |      3.46s |      0.75% |
+| Solve: CG/GMRES                 |         1 |       203s |        44% |
+| Solve: Preconditioner setup     |         1 |      38.4s |       8.3% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 4:
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 3 with PID 0 on node cpu01 exited on signal 9 (Killed).
+--------------------------------------------------------------------------
+
+
+===========================================
+Polynomial degree 3
+Running with 32 MPI process(es)
+===========================================
+Cycle 0:
+	Number of active cells: 4096
+	Number of dofs: 117649
+	Memory (RSS) [GB] -> Sum: 6.64903 | Avg: 0.207782 | Max: 0.211449
+	Number of CG/GMRES iterations: 39
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      1.19s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |     0.459s |        38% |
+| Generate mesh                   |         1 |    0.0711s |         6% |
+| Setup                           |         1 |     0.168s |        14% |
+| Solve                           |         1 |     0.453s |        38% |
+| Solve: 1 multigrid V-cycle      |         1 |   0.00887s |      0.74% |
+| Solve: CG/GMRES                 |         1 |     0.311s |        26% |
+| Solve: Preconditioner setup     |         1 |     0.125s |        11% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 1:
+	Number of active cells: 32768
+	Number of dofs: 912673
+	Memory (RSS) [GB] -> Sum: 9.14317 | Avg: 0.285724 | Max: 0.296227
+	Number of CG/GMRES iterations: 43
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      7.88s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |       2.6s |        33% |
+| Setup                           |         1 |     0.739s |       9.4% |
+| Solve                           |         1 |       4.4s |        56% |
+| Solve: 1 multigrid V-cycle      |         1 |    0.0418s |      0.53% |
+| Solve: CG/GMRES                 |         1 |      3.76s |        48% |
+| Solve: Preconditioner setup     |         1 |      0.57s |       7.2% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 2:
+	Number of active cells: 262144
+	Number of dofs: 7189057
+	Memory (RSS) [GB] -> Sum: 28.3794 | Avg: 0.886857 | Max: 0.925774
+	Number of CG/GMRES iterations: 45
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      59.8s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |      22.7s |        38% |
+| Setup                           |         1 |      3.24s |       5.4% |
+| Solve                           |         1 |      33.1s |        55% |
+| Solve: 1 multigrid V-cycle      |         1 |      0.48s |       0.8% |
+| Solve: CG/GMRES                 |         1 |      26.8s |        45% |
+| Solve: Preconditioner setup     |         1 |      5.61s |       9.4% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 3:
+	Number of active cells: 2097152
+	Number of dofs: 57066625
+	Memory (RSS) [GB] -> Sum: 180.177 | Avg: 5.63054 | Max: 5.79586
+	Number of CG/GMRES iterations: 47
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       457s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| Assembly                        |         1 |       173s |        38% |
+| Setup                           |         1 |      32.6s |       7.1% |
+| Solve                           |         1 |       247s |        54% |
+| Solve: 1 multigrid V-cycle      |         1 |      3.36s |      0.73% |
+| Solve: CG/GMRES                 |         1 |       205s |        45% |
+| Solve: Preconditioner setup     |         1 |      37.5s |       8.2% |
++---------------------------------+-----------+------------+------------+
+
+
+Cycle 4:
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 3 with PID 0 on node cpu01 exited on signal 9 (Killed).
+--------------------------------------------------------------------------
