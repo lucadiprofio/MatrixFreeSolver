@@ -133,8 +133,10 @@ The main knobs are compile-time and live in the source:
 │   ├── ADROperator.hpp     # matrix-free ADR operator
 │   └── ADROperator.cpp     # local_apply, SUPG (compute_tau), diagonal
 ├── test/                   # problem definition
-│   ├── manufactured.hpp    # coefficients, exact solution, RHS, boundary data
-│   └── test1.hpp
+│   ├── homogeneousManufactured.hpp    #homogeneous Dirichlet BCs
+|   ├── nonHomogeneousManufactured.hpp    #no homogeneous Dirichlet BCs    
+│   |── noAdvection.hpp    #test without advection term
+|    └── dominantAdvection.hpp    #test with high advection term
 ├── out/                    # VTU output (runtime)
 └── report/                 # project report
 ```
