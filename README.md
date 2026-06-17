@@ -107,7 +107,7 @@ The main knobs are compile-time and live in the source:
 | Number of refinement cycles `n_cycles` | `SolverClass::run()` |
 | **SUPG on/off** | `ADR_Operator::compute_tau()` — returns `0` (off) by default; uncomment the `return 1/sqrt(...)` line to enable. The matching toggle is in `SolverClass::assemble_rhs()`. |
 | Mesh, geometry and boundary IDs | `SolverClass::init_mesh()` |
-| Problem data (μ, β, γ, f, BCs, exact solution) | `test/manufactured.hpp` |
+| Problem data (μ, β, γ, f, BCs, exact solution) | `test/ |
 | VTU output | disabled by default — uncomment `output_results(...)` in `run()` |
 
 > Changing `dim` or `fe_degree` requires the corresponding explicit template
