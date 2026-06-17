@@ -118,9 +118,6 @@ The main knobs are compile-time and live in the source:
 
 ## Repository structure
 
-> Inferred from the include paths (`#include "../test/..."`) and the output
-> path (`../out/`). Adjust to match the actual layout.
-
 ```
 .
 ├── CMakeLists.txt          # top-level build script (includes cmake-common.cmake)
