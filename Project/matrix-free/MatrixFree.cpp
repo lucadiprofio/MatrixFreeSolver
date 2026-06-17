@@ -31,6 +31,9 @@ void SolverClass<dim, degree>::init_mesh() {
 
   Point<dim> p1(0, 0, 0);
   Point<dim> p2(1, 1, 1);
+
+  // colorize=true: GridGenerator tags each of the 6 faces of the unit cube with
+  // a distinct boundary id, following the convention below.
   std::vector<unsigned int> subdivisions(dim, 4);
   GridGenerator::subdivided_hyper_rectangle(triangulation, subdivisions, p1, p2, true);
 
@@ -56,6 +59,7 @@ void SolverClass<dim, degree>::init_mesh() {
         }
   }
 
+  // initial uniform refinement
   triangulation.refine_global(2);
 }
 
@@ -72,6 +76,10 @@ void SolverClass<dim, degree>::setup_system() {
   locally_owned_dofs = dof_handler.locally_owned_dofs();
   DoFTools::extract_locally_relevant_dofs(dof_handler, locally_relevant_dofs);
 
+  // AffineConstraints holds BOTH hanging-node constraints (for adaptivity) and
+  // the inhomogeneous Dirichlet values. In matrix-free we cannot condense the
+  // matrix, so these constraints are applied at read/write time inside the
+  // cell loop instead.
   constraints.clear();
   constraints.reinit(locally_relevant_dofs);
   DoFTools::make_hanging_node_constraints(dof_handler, constraints);
@@ -85,7 +93,9 @@ void SolverClass<dim, degree>::setup_system() {
   VectorTools::interpolate_boundary_values(mapping, dof_handler, dirichlet_map, constraints);
   constraints.close();
 
-  // init MatrixFree
+  // Configure MatrixFree. tasks_parallel_scheme=none: no internal TBB threading
+  // (parallelism comes from MPI + SIMD). The update flags request exactly the
+  // geometric quantities the kernels need at quadrature points.
   typename MatrixFree<dim, double>::AdditionalData additional_data;
   additional_data.tasks_parallel_scheme = MatrixFree<dim, double>::AdditionalData::none;
   additional_data.mapping_update_flags =
@@ -95,6 +105,8 @@ void SolverClass<dim, degree>::setup_system() {
   additional_data.mapping_update_flags_boundary_faces = 
     (update_values | update_JxW_values | update_quadrature_points);
 
+  // QGauss<1>(degree+1): a (degree+1)-point 1D Gauss rule, tensorized to dim.
+  // It integrates the bilinear form exactly on affine cells.
   std::shared_ptr<MatrixFree<dim, double>> system_mf_storage = std::make_shared<MatrixFree<dim, double>>();
   system_mf_storage->reinit(mapping, dof_handler, constraints, QGauss<1>(fe.degree + 1), additional_data);
   system_matrix.initialize(system_mf_storage);
@@ -117,8 +129,12 @@ template <unsigned int dim, unsigned int degree>
 void SolverClass<dim, degree>::setup_multigrid() {
   TimerOutput::Scope timing(computing_timer, "Setup multigrid");
 
+  // Distribute DOFs on every multigrid level (not just the active mesh).
   dof_handler.distribute_mg_dofs();
 
+  // mg_constrained_dofs records which level DOFs lie on the Dirichlet boundary,
+  // so they can be constrained to zero on each level (the correction computed by
+  // the preconditioner is homogeneous).
   mg_constrained_dofs.clear();
   mg_constrained_dofs.initialize(dof_handler);
 
@@ -129,6 +145,10 @@ void SolverClass<dim, degree>::setup_multigrid() {
   const unsigned int nlevels = triangulation.n_global_levels();
   mg_matrices.resize(0, nlevels - 1);
 
+  // Build one matrix-free ADR operator per level. Each gets its own MatrixFree
+  // object tied to that level (additional_data.mg_level = level), its own
+  // homogeneous Dirichlet constraints, and its own cached coefficients and
+  // diagonal (the diagonal feeds the Chebyshev smoother).
   for (unsigned int level = 0; level < nlevels; ++level) {
     IndexSet locally_relevant_level_dofs;
     DoFTools::extract_locally_relevant_level_dofs(dof_handler, level, locally_relevant_level_dofs);
@@ -140,6 +160,8 @@ void SolverClass<dim, degree>::setup_multigrid() {
       level_constraints.add_line(dof_index); // Adds a constraint in AffCon: x_i = 0
     level_constraints.close();
 
+    // float here: the level operators are single precision (see the mixed-
+    // precision note in the header).
     typename MatrixFree<dim, float>::AdditionalData additional_data;
     additional_data.tasks_parallel_scheme = MatrixFree<dim, float>::AdditionalData::none;
     additional_data.mapping_update_flags =
@@ -162,6 +184,12 @@ template <unsigned int dim, unsigned int degree>
 void SolverClass<dim, degree>::assemble_rhs() {
   TimerOutput::Scope timing(computing_timer, "Assemble right-hand side");
 
+  // Inhomogeneous Dirichlet via LIFTING. In matrix-free we cannot eliminate the
+  // constrained DOFs from a stored matrix, so we instead split u = u0 + uD,
+  // where uD carries the boundary data and u0 is the unknown with homogeneous
+  // BCs. We solve A u0 = f - A uD. Here we build that right-hand side: put uD
+  // into "solution" (constraints.distribute fills the constrained entries with
+  // their Dirichlet values), then assemble f minus the operator applied to uD.
   solution = 0.;
   constraints.distribute(solution);
   solution.update_ghost_values();
@@ -172,7 +200,11 @@ void SolverClass<dim, degree>::assemble_rhs() {
   const unsigned int n_batches = system_matrix.get_matrix_free()->n_cell_batches();
   for (unsigned int cell = 0; cell < n_batches; ++cell) {
     phi.reinit(cell);
-    phi.read_dof_values_plain(solution); // plain to allow inhomogeneous Dirichlet boundary conditions
+
+    // read_dof_values_plain ignores the constraints, so it reads the raw
+    // (inhomogeneous) boundary values of uD that we just wrote into solution.
+    // The constrained-aware read_dof_values would zero them out.
+    phi.read_dof_values_plain(solution);
 
     phi.evaluate(EvaluationFlags::gradients | EvaluationFlags::values);
 
@@ -206,6 +238,9 @@ void SolverClass<dim, degree>::assemble_rhs() {
 
       const auto strong_residual = beta_val * grad_u + gamma_val * u;
 
+      // Note the minus signs: these contributions are -A(uD, .) (diffusion,
+      // advection, reaction acting on the lift uD), to which we add the source
+      // term f. Result: system_rhs = (f, v) - a(uD, v).
       phi.submit_gradient(
         -mu_val * grad_u
         - (tau * strong_residual) * beta_val
@@ -218,6 +253,9 @@ void SolverClass<dim, degree>::assemble_rhs() {
     phi.distribute_local_to_global(system_rhs);
   }
 
+  // Neumann contribution: a surface integral of the prescribed flux over the
+  // Neumann faces. Skipped here because neumann_boundary_ids is empty (the
+  // current problem is fully Dirichlet), but the machinery is in place.
   if (!neumann_boundary_ids.empty()) {
     FEFaceEvaluation<dim, degree, degree + 1, 1, double> phi_face(*system_matrix.get_matrix_free(), true);
     const unsigned int n_face_batches = system_matrix.get_matrix_free()->n_boundary_face_batches();
@@ -247,9 +285,15 @@ void SolverClass<dim, degree>::solve() {
 
   computing_timer.enter_subsection("Solve: Preconditioner setup");
 
+  // Transfer operators between multigrid levels (prolongation/restriction),
+  // matrix-free and aware of the Dirichlet constraints.
   MGTransferMatrixFree<dim, float> mg_transfer(mg_constrained_dofs);
   mg_transfer.build(dof_handler);
 
+  // Chebyshev smoother: a polynomial smoother that only needs matrix-vector
+  // products and the inverse diagonal, ideal for matrix-free, since there is
+  // no matrix to do Gauss-Seidel-style sweeps with.
+  using SmootherType = PreconditionChebyshev<MatrixFreeLevelMatrix, MatrixFreeLevelVector>;
   using SmootherType = PreconditionChebyshev<MatrixFreeLevelMatrix, MatrixFreeLevelVector>;
   using MGSmootherType = MGSmootherPrecondition<MatrixFreeLevelMatrix, SmootherType, MatrixFreeLevelVector>;
 
@@ -260,6 +304,9 @@ void SolverClass<dim, degree>::solve() {
   for (unsigned int level = 0; level < n_levels; ++level) {
 
     if (level > 0) {
+      // Finer levels: smooth the high-frequency error in a fixed eigenvalue
+      // window [lambda_max/range, lambda_max]. lambda_max is estimated by a few
+      // CG iterations; the polynomial degree sets how many matvecs per sweep.
       smoother_data[level].smoothing_range = 20.0; // Chebyshev smoothing range (alpha)
       smoother_data[level].degree = 2; // Number of Chebyshev iterations per sweep
   
@@ -268,6 +315,9 @@ void SolverClass<dim, degree>::solve() {
       smoother_data[level].eig_cg_n_iterations = 20;
     }
     else {
+      // Coarsest level acts as the coarse solver: degree = invalid_unsigned_int
+      // makes Chebyshev iterate to (near) convergence, i.e. it effectively
+      // "solves" the small coarse system instead of just smoothing.
       smoother_data[0].smoothing_range = 2e-2;
       smoother_data[0].degree = numbers::invalid_unsigned_int;
       smoother_data[0].eig_cg_n_iterations = mg_matrices[0].m();
@@ -280,54 +330,71 @@ void SolverClass<dim, degree>::solve() {
   MGSmootherType mg_smoother;
   mg_smoother.initialize(mg_matrices, smoother_data);
 
-  // Coarse grid solver
+  // Coarse grid solver: reuse the smoother on the coarsest level
   MGCoarseGridApplySmoother<MatrixFreeLevelVector> mg_coarse;
   mg_coarse.initialize(mg_smoother);
 
   mg::Matrix<MatrixFreeLevelVector> mg_matrix(mg_matrices);
 
-  // Interface operators handle the coupling between coarse and fine levels
+  // Interface (edge) operators: handle the coupling across refinement edges
+  // between levels (the entries linking refined and unrefined regions). Needed
+  // for correctness with local refinement / hanging nodes.
   MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<MatrixFreeLevelMatrix>> mg_interface_matrices;
   mg_interface_matrices.resize(0, triangulation.n_global_levels() - 1);
   for (unsigned int level = 0; level < triangulation.n_global_levels(); ++level)
     mg_interface_matrices[level].initialize(mg_matrices[level]);
   mg::Matrix<MatrixFreeLevelVector> mg_interface(mg_interface_matrices);
 
+  // Assemble the V-cycle and wrap it as a preconditioner for the outer solver.
   Multigrid<MatrixFreeLevelVector> mg(mg_matrix, mg_coarse, mg_transfer, mg_smoother, mg_smoother);
   mg.set_edge_matrices(mg_interface, mg_interface);
 
+  // PreconditionMG also bridges the precision gap: the outer solver is double,
+  // the multigrid is float, and this wrapper converts between the two.
   PreconditionMG<dim, MatrixFreeLevelVector, MGTransferMatrixFree<dim, float>> preconditioner(dof_handler, mg, mg_transfer);
 
   computing_timer.leave_subsection("Solve: Preconditioner setup");
 
+  // Measure the cost of a single multigrid V-cycle in isolation (one
+  // preconditioner application), useful to report preconditioner throughput.
   track_memory();
 
-  // Measure 1 V-Cycle
+  // Measure the cost of a single multigrid V-cycle in isolation (one
+  // preconditioner application), useful to report preconditioner throughput.
   {
     TimerOutput::Scope timing(computing_timer, "Solve: 1 multigrid V-cycle");
     preconditioner.vmult(solution, system_rhs);
   }
 
+  // Reset the initial guess to the lift uD (homogeneous part starts at 0).
   solution = 0.;
   constraints.distribute(solution);
 
+  // Relative stopping criterion: tol = 1e-12 + 1e-8 * ||rhs||.
   SolverControl solver_control(1000, 1e-12 + 1e-8 * system_rhs.l2_norm());
   {
     TimerOutput::Scope timing(computing_timer, "Solve: CG/GMRES");
 
+    // AdditionalData(max_basis_size = 50, right_preconditioning = false):
+    // restart the Krylov basis every 50 vectors, use left preconditioning.
+    // (The non-symmetry from advection is why we use GMRES rather than CG.)
     SolverType<MatrixFreeActiveVector>::AdditionalData gmres_data(false, 50);
     SolverType<MatrixFreeActiveVector> solver(solver_control, gmres_data);
     solver.solve(system_matrix, solution, system_rhs, preconditioner);
   }
 
-  // this call sets the constrained DOFs to their prescribed Dirichlet values,
-  // giving u = u_0 + u_D.
+  // Final lift: GMRES returns the homogeneous part u0 on the free DOFs; this
+  // call writes the Dirichlet values back onto the constrained DOFs, giving the
+  // full solution u = u0 + uD.
   constraints.distribute(solution);
 
   pcout << "\tNumber of CG/GMRES iterations: " << solver_control.last_step() << std::endl;
 }
 
-
+// Adaptive refinement based on the Kelly error estimator. NOTE: this path is
+// implemented but currently NOT used -- run() refines uniformly instead (see
+// the commented-out refine_grid call there). Kept available to switch the study
+// from uniform to adaptive refinement.
 template <unsigned int dim, unsigned int degree>
 void SolverClass<dim, degree>::refine_grid(const MatrixFreeActiveVector &locally_relevant_solution) {
   TimerOutput::Scope t(computing_timer, "Refine");
@@ -367,7 +434,10 @@ void SolverClass<dim, degree>::output_results(const unsigned int cycle, const Ma
   data_out.write_vtu_with_pvtu_record("../out/", "solution", cycle, mpi_communicator, 2, 1);
 }
 
-
+// Computes the discretization error against the manufactured exact solution in
+// two norms (L2 and H1 seminorm) per cell, then reduces to the global error.
+// These are the numbers that go into the convergence table to verify the
+// expected orders of accuracy (~ h^{p+1} in L2, ~ h^p in H1 for degree p).
 template <unsigned int dim, unsigned int degree>
 void SolverClass<dim, degree>::estimate_error(const unsigned int cycle, const MatrixFreeActiveVector &locally_relevant_solution) {
   Vector<float> difference_per_cell(triangulation.n_active_cells());

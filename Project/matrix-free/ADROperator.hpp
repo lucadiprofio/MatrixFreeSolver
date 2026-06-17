@@ -13,6 +13,12 @@
 namespace MtxFree {
 using namespace manufactured;
 
+// Derives from MatrixFreeOperators::Base, which already implements vmult(),
+// Tvmult(), the constrained-DOF handling and the interface to the iterative
+// solvers. We only need to provide the local kernels: the contract is that a
+// derived class implements apply_add() (the actual matrix-vector product, built
+// on a cell_loop) and, since we use it as a smoother, compute_diagonal().
+
 template <int dim, int fe_degree, typename number>
 class ADR_Operator : public dealii::MatrixFreeOperators::Base<dim, LinearAlgebra::distributed::Vector<number>> {
 public:
@@ -20,6 +26,10 @@ public:
   ADR_Operator() = default;
 
   void clear() override;
+
+  // Pre-evaluates the PDE coefficients (mu, beta, gamma) at every quadrature
+  // point and caches them, so the hot matrix-vector loop only does table
+  // look-ups instead of re-evaluating Function objects.
   void setup_coefficients(const DiffusionCoefficient<dim> &mu_function, const AdvectionCoefficient<dim> &beta_function, const ReactionCoefficient<dim> &gamma_function);
   void compute_diagonal() override;
 
@@ -30,6 +40,9 @@ private:
   
   dealii::VectorizedArray<number> compute_tau(const dealii::Tensor<2, dim, dealii::VectorizedArray<number>> &inv_jac, const dealii::VectorizedArray<number> &mu_val, const Tensor<1, dim, dealii::VectorizedArray<number>> &beta_val, const dealii::VectorizedArray<number> &gamma_val) const;
 
+  // Cached coefficient values, one entry per (cell-batch, quadrature point).
+  // AlignedVector<VectorizedArray> gives SIMD-aligned storage: each entry holds
+  // the coefficient for all cells in a vectorized batch at once.
   dealii::AlignedVector<dealii::VectorizedArray<number>> mu_values;
   dealii::AlignedVector<dealii::VectorizedArray<number>> gamma_values;
   dealii::AlignedVector<dealii::Tensor<1, dim, dealii::VectorizedArray<number>>> beta_values;

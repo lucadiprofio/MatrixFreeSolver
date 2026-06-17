@@ -28,11 +28,18 @@ public:
         mpi_size(dealii::Utilities::MPI::n_mpi_processes(mpi_communicator)),
         mpi_rank(dealii::Utilities::MPI::this_mpi_process(mpi_communicator)),
 
+        // The two extra flags are what make geometric multigrid possible on a
+        // distributed mesh: limit_level_difference_at_vertices enforces 2:1
+        // mesh balancing (needed for consistent inter-level transfer), and
+        // construct_multigrid_hierarchy tells the distributed triangulation to
+        // keep the full hierarchy of coarser levels, not just the active mesh.
         triangulation(mpi_communicator,
                       dealii::Triangulation<dim>::limit_level_difference_at_vertices,
                       dealii::parallel::distributed::Triangulation<dim>::construct_multigrid_hierarchy),
-        mapping(), fe(degree), dof_handler(triangulation),
 
+        // MappingQ1 = (multi)linear geometry: cells are affine, so Jacobians are
+        // constant per cell -- cheaper and exactly what matrix-free likes.
+        mapping(), fe(degree), dof_handler(triangulation),
         pcout(std::cout, mpi_rank == 0),
         computing_timer(mpi_communicator, pcout, dealii::TimerOutput::summary, dealii::TimerOutput::wall_times),
 
@@ -43,11 +50,19 @@ public:
   void run();
 
 private:
+
+  // Mixed-precision multigrid: the operator and solution live in double on the
+  // active (fine) system, while the multigrid levels (used only as a
+  // preconditioner, where approximation errors are harmless) run in float.
+  // This roughly halves the memory traffic of the preconditioner, which is the
+  // bandwidth-bound bottleneck.
   using MatrixFreeActiveMatrix = ADR_Operator<dim, degree, double>;
   using MatrixFreeLevelMatrix = ADR_Operator<dim, degree, float>;
   using MatrixFreeActiveVector = dealii::LinearAlgebra::distributed::Vector<double>;
   using MatrixFreeLevelVector = dealii::LinearAlgebra::distributed::Vector<float>;
 
+  // GMRES, not CG: the ADR operator is non-symmetric because of the advection
+  // term beta.grad u, so CG is not applicable.
   template <typename VecType> using SolverType = dealii::SolverGMRES<VecType>;
 
   void init_mesh();
