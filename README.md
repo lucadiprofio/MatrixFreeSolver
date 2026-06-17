@@ -125,7 +125,8 @@ The main knobs are compile-time and live in the source:
 .
 ├── CMakeLists.txt          # top-level build script (includes cmake-common.cmake)
 ├── cmake-common.cmake      # shared compiler/deal.II/MPI configuration
-├── src/                    # solver sources
+├── matrix-based/            # matrix based solver sources
+├── matrix-free/            # matrix free solver sources
 │   ├── main.cpp            # entry point: sets dim/degree, runs the solver
 │   ├── MatrixFree.hpp      # SolverClass: setup, multigrid, solve, post-processing
 │   ├── MatrixFree.cpp
