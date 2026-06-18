@@ -135,7 +135,6 @@ The main knobs are compile-time and live in the source:
 │   |── noAdvection.hpp    #test without advection term
 |    └── dominantAdvection.hpp    #test with high advection term
 ├── out/                    # VTU output (runtime)
-└── report/                 # project report
 ```
 
 ---
